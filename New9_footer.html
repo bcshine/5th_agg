@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>푸터 - 중간계 AI 스튜디오</title>
+    <!-- 넥슨폰트 웹폰트 불러오기 (초등학생도 읽기 쉬운 폰트) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome 아이콘 라이브러리 (SNS 로고용) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* 전체 페이지 기본 설정 (초등학생용 주석: 웹페이지 전체의 기본 모양을 정하는 곳) */
+        * {
+            margin: 0; /* 여백 없애기 */
+            padding: 0; /* 안쪽 여백 없애기 */
+            box-sizing: border-box; /* 크기 계산을 쉽게 하기 */
+        }
+
+        /* 전체 페이지 배경과 폰트 설정 */
+        body {
+            font-family: 'Noto Sans KR', sans-serif; /* 넥슨폰트 사용하기 */
+            background-color: white; /* 배경색을 흰색으로 */
+            color: #333; /* 글자색을 진한 회색으로 */
+            line-height: 1.6; /* 줄 간격을 넓게 해서 읽기 쉽게 */
+            min-height: 100vh; /* 최소 높이를 화면 전체로 */
+            display: flex; /* 세로 배치 */
+            flex-direction: column; /* 세로 방향으로 */
+        }
+
+        /* 메인 콘텐츠 영역 (푸터를 아래로 밀어내기 위해) */
+        .main-content {
+            flex: 1; /* 남은 공간 모두 차지 */
+            padding: 60px 20px; /* 위아래 60px, 좌우 20px 여백 */
+            text-align: center; /* 가운데 정렬 */
+        }
+
+        .main-content h1 {
+            font-size: 2.5rem; /* 큰 글씨 */
+            color: #052f5d; /* 브랜드 컬러 */
+            margin-bottom: 20px; /* 아래쪽 여백 */
+        }
+
+        .main-content p {
+            font-size: 1.2rem; /* 중간 글씨 */
+            color: #666; /* 회색 */
+        }
+
+        /* 푸터 전체 컨테이너 */
+        .footer {
+            background-color: #052f5d; /* 진한 파란색 배경 */
+            color: white; /* 흰색 글씨 */
+            padding: 40px 20px; /* 위아래 40px, 좌우 20px 여백 */
+            margin-top: auto; /* 자동으로 아래쪽에 배치 */
+        }
+
+        /* 푸터 내용 컨테이너 */
+        .footer-content {
+            max-width: 1200px; /* 최대 너비 제한 */
+            margin: 0 auto; /* 가운데 정렬 */
+            display: flex; /* 가로로 나란히 배치 */
+            justify-content: space-between; /* 양쪽 끝으로 정렬 */
+            align-items: center; /* 세로 가운데 정렬 */
+            flex-wrap: wrap; /* 화면이 작으면 줄바꿈 */
+            gap: 30px; /* 요소들 사이 간격 */
+        }
+
+        /* 회사 정보 영역 */
+        .company-info {
+            display: flex; /* 가로로 나란히 배치 */
+            flex-direction: column; /* 세로 방향으로 */
+            gap: 10px; /* 줄 사이 간격 */
+        }
+
+        .company-name {
+            font-size: 1.5rem; /* 큰 글씨 */
+            font-weight: 700; /* 굵은 글씨 */
+            margin-bottom: 10px; /* 아래쪽 여백 */
+        }
+
+        .contact-info {
+            display: flex; /* 가로로 나란히 배치 */
+            flex-direction: column; /* 세로 방향으로 */
+            gap: 5px; /* 줄 사이 간격 */
+        }
+
+        .contact-item {
+            display: flex; /* 가로로 나란히 배치 */
+            align-items: center; /* 세로 가운데 정렬 */
+            gap: 10px; /* 아이콘과 텍스트 사이 간격 */
+            font-size: 1rem; /* 글씨 크기 */
+        }
+
+        .contact-item i {
+            width: 20px; /* 아이콘 너비 고정 */
+            text-align: center; /* 아이콘 가운데 정렬 */
+            color: #87ceeb; /* 연한 파란색 */
+        }
+
+        /* SNS 연결 버튼 영역 */
+        .social-links {
+            display: flex; /* 가로로 나란히 배치 */
+            gap: 15px; /* 버튼들 사이 간격 */
+            align-items: center; /* 세로 가운데 정렬 */
+        }
+
+        .social-title {
+            font-size: 1.1rem; /* 글씨 크기 */
+            font-weight: 500; /* 중간 굵기 */
+            margin-right: 10px; /* 오른쪽 여백 */
+            color: #87ceeb; /* 연한 파란색 */
+        }
+
+        /* SNS 버튼 스타일 */
+        .social-btn {
+            display: inline-flex; /* 인라인 플렉스 */
+            align-items: center; /* 세로 가운데 정렬 */
+            justify-content: center; /* 가로 가운데 정렬 */
+            width: 45px; /* 너비 */
+            height: 45px; /* 높이 */
+            border-radius: 50%; /* 원형으로 */
+            text-decoration: none; /* 밑줄 없애기 */
+            color: white; /* 흰색 글씨 */
+            font-size: 1.2rem; /* 아이콘 크기 */
+            transition: all 0.3s ease; /* 부드러운 변화 */
+            border: 2px solid transparent; /* 투명한 테두리 */
+        }
+
+        /* 인스타그램 버튼 */
+        .social-btn.instagram {
+            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); /* 인스타그램 그라데이션 */
+        }
+
+        .social-btn.instagram:hover {
+            transform: translateY(-3px) scale(1.1); /* 위로 올라가고 커지기 */
+            box-shadow: 0 8px 25px rgba(240, 148, 51, 0.4); /* 그림자 */
+        }
+
+        /* 페이스북 버튼 */
+        .social-btn.facebook {
+            background-color: #1877f2; /* 페이스북 파란색 */
+        }
+
+        .social-btn.facebook:hover {
+            transform: translateY(-3px) scale(1.1); /* 위로 올라가고 커지기 */
+            box-shadow: 0 8px 25px rgba(24, 119, 242, 0.4); /* 그림자 */
+        }
+
+        /* 유튜브 버튼 */
+        .social-btn.youtube {
+            background-color: #ff0000; /* 유튜브 빨간색 */
+        }
+
+        .social-btn.youtube:hover {
+            transform: translateY(-3px) scale(1.1); /* 위로 올라가고 커지기 */
+            box-shadow: 0 8px 25px rgba(255, 0, 0, 0.4); /* 그림자 */
+        }
+
+        /* 블로그 버튼 */
+        .social-btn.blog {
+            background-color: #03c75a; /* 네이버 초록색 */
+        }
+
+        .social-btn.blog:hover {
+            transform: translateY(-3px) scale(1.1); /* 위로 올라가고 커지기 */
+            box-shadow: 0 8px 25px rgba(3, 199, 90, 0.4); /* 그림자 */
+        }
+
+        /* 저작권 정보 */
+        .copyright {
+            text-align: center; /* 가운데 정렬 */
+            margin-top: 30px; /* 위쪽 여백 */
+            padding-top: 20px; /* 위쪽 안쪽 여백 */
+            border-top: 1px solid rgba(255, 255, 255, 0.2); /* 위쪽 테두리 */
+            font-size: 0.9rem; /* 작은 글씨 */
+            color: #87ceeb; /* 연한 파란색 */
+        }
+
+        /* 태블릿 화면 (768px 이하) */
+        @media (max-width: 768px) {
+            .main-content h1 {
+                font-size: 2rem; /* 글씨 크기 줄이기 */
+            }
+
+            .main-content p {
+                font-size: 1rem; /* 글씨 크기 줄이기 */
+            }
+
+            .footer {
+                padding: 30px 15px; /* 여백 줄이기 */
+            }
+
+            .footer-content {
+                flex-direction: column; /* 세로로 배치 */
+                text-align: center; /* 가운데 정렬 */
+                gap: 20px; /* 간격 줄이기 */
+            }
+
+            .contact-info {
+                align-items: center; /* 가운데 정렬 */
+            }
+
+            .social-links {
+                justify-content: center; /* 가운데 정렬 */
+                flex-wrap: wrap; /* 줄바꿈 허용 */
+            }
+
+            .social-title {
+                width: 100%; /* 전체 너비 */
+                text-align: center; /* 가운데 정렬 */
+                margin-right: 0; /* 오른쪽 여백 제거 */
+                margin-bottom: 10px; /* 아래쪽 여백 */
+            }
+        }
+
+        /* 모바일 화면 (480px 이하) */
+        @media (max-width: 480px) {
+            .main-content {
+                padding: 40px 15px; /* 여백 줄이기 */
+            }
+
+            .main-content h1 {
+                font-size: 1.8rem; /* 글씨 크기 더 줄이기 */
+            }
+
+            .company-name {
+                font-size: 1.3rem; /* 글씨 크기 줄이기 */
+            }
+
+            .contact-item {
+                font-size: 0.9rem; /* 글씨 크기 줄이기 */
+            }
+
+            .social-btn {
+                width: 40px; /* 버튼 크기 줄이기 */
+                height: 40px; /* 버튼 크기 줄이기 */
+                font-size: 1rem; /* 아이콘 크기 줄이기 */
+            }
+
+            .social-links {
+                gap: 10px; /* 간격 줄이기 */
+            }
+        }
+
+        /* 푸터 애니메이션 효과 */
+        .footer {
+            opacity: 0; /* 처음에는 안 보이게 */
+            transform: translateY(50px); /* 아래에서 시작 */
+            animation: fadeInUp 1s ease-out 0.5s forwards; /* 0.5초 후에 나타나기 */
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1; /* 완전히 보이게 */
+                transform: translateY(0); /* 원래 위치로 */
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 메인 콘텐츠 영역 (푸터 테스트용) -->
+    <div class="main-content">
+        <h1>중간계 AI 스튜디오</h1>
+        <p>소상공인과 자영업 사장님들의 성공 파트너</p>
+        <p style="margin-top: 20px; color: #999;">푸터가 페이지 하단에 고정되어 있습니다.</p>
+    </div>
+
+    <!-- 푸터 섹션 -->
+    <footer class="footer">
+        <div class="footer-content">
+            <!-- 회사 정보 영역 -->
+            <div class="company-info">
+                <!-- 회사명 -->
+                <div class="company-name">중간계 AI 스튜디오</div>
+                
+                <!-- 연락처 정보 -->
+                <div class="contact-info">
+                    <!-- 전화번호 -->
+                    <div class="contact-item">
+                        <i class="fas fa-phone"></i>
+                        <span>02-123-1234</span>
+                    </div>
+                    
+                    <!-- 이메일 -->
+                    <div class="contact-item">
+                        <i class="fas fa-envelope"></i>
+                        <span>abc@gmail.com</span>
+                    </div>
+                    
+                    <!-- 주소 -->
+                    <div class="contact-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>서울특별시 강남구 테헤란로 123</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SNS 연결 버튼 영역 -->
+            <div class="social-links">
+                <div class="social-title">Follow Us</div>
+                
+                <!-- 인스타그램 버튼 -->
+                <a href="https://www.instagram.com" target="_blank" class="social-btn instagram" title="인스타그램">
+                    <i class="fab fa-instagram"></i>
+                </a>
+                
+                <!-- 페이스북 버튼 -->
+                <a href="https://www.facebook.com" target="_blank" class="social-btn facebook" title="페이스북">
+                    <i class="fab fa-facebook-f"></i>
+                </a>
+                
+                <!-- 유튜브 버튼 -->
+                <a href="https://www.youtube.com" target="_blank" class="social-btn youtube" title="유튜브">
+                    <i class="fab fa-youtube"></i>
+                </a>
+                
+                <!-- 블로그 버튼 -->
+                <a href="https://blog.naver.com" target="_blank" class="social-btn blog" title="네이버 블로그">
+                    <i class="fas fa-blog"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- 저작권 정보 -->
+        <div class="copyright">
+            <p>&copy; 2024 중간계 AI 스튜디오. All rights reserved.</p>
+            <p style="margin-top: 5px; font-size: 0.8rem;">소상공인과 자영업 사장님들의 성공을 위한 AI 솔루션</p>
+        </div>
+    </footer>
+
+    <script>
+        // 페이지 로딩 완료 시 실행 (초등학생용 주석: 웹페이지가 다 로딩되면 실행되는 함수)
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('푸터 페이지가 로딩되었습니다'); // 개발자 도구에 메시지 출력
+            
+            // SNS 버튼 클릭 이벤트 (초등학생용 주석: SNS 버튼을 클릭했을 때 실행되는 기능)
+            const socialButtons = document.querySelectorAll('.social-btn'); // 모든 SNS 버튼 찾기
+            
+            socialButtons.forEach(function(button) {
+                button.addEventListener('click', function(event) {
+                    // 클릭 효과 추가
+                    button.style.transform = 'scale(0.95)'; // 살짝 작아지기
+                    
+                    setTimeout(function() {
+                        button.style.transform = ''; // 원래 크기로 돌아가기
+                    }, 150);
+                    
+                    console.log('SNS 버튼 클릭:', button.title); // 어떤 SNS 버튼을 클릭했는지 알려주기
+                });
+            });
+
+            // 연락처 정보 클릭 이벤트 (초등학생용 주석: 전화번호나 이메일을 클릭했을 때 실행되는 기능)
+            const contactItems = document.querySelectorAll('.contact-item'); // 모든 연락처 정보 찾기
+            
+            contactItems.forEach(function(item) {
+                item.addEventListener('click', function() {
+                    const text = item.querySelector('span').textContent; // 텍스트 내용 가져오기
+                    
+                    // 전화번호인 경우
+                    if (text.includes('02-')) {
+                        if (confirm('전화를 걸까요?\n' + text)) {
+                            window.location.href = 'tel:' + text.replace(/-/g, ''); // 전화 걸기
+                        }
+                    }
+                    // 이메일인 경우
+                    else if (text.includes('@')) {
+                        if (confirm('이메일을 보낼까요?\n' + text)) {
+                            window.location.href = 'mailto:' + text; // 이메일 보내기
+                        }
+                    }
+                    // 주소인 경우
+                    else if (text.includes('서울')) {
+                        if (confirm('지도에서 위치를 확인할까요?\n' + text)) {
+                            window.open('https://map.naver.com/v5/search/' + encodeURIComponent(text), '_blank'); // 네이버 지도에서 검색
+                        }
+                    }
+                });
+                
+                // 마우스 올렸을 때 포인터 모양으로 변경
+                item.style.cursor = 'pointer';
+            });
+
+            // 스크롤 이벤트 (초등학생용 주석: 페이지를 스크롤할 때 푸터에 특별한 효과 주기)
+            window.addEventListener('scroll', function() {
+                const footer = document.querySelector('.footer'); // 푸터 찾기
+                const footerPosition = footer.getBoundingClientRect().top; // 푸터 위치 계산
+                const windowHeight = window.innerHeight; // 화면 높이
+                
+                // 푸터가 화면에 보이면
+                if (footerPosition < windowHeight) {
+                    footer.style.boxShadow = '0 -10px 30px rgba(5, 47, 93, 0.3)'; // 위쪽 그림자 추가
+                } else {
+                    footer.style.boxShadow = 'none'; // 그림자 제거
+                }
+            });
+        });
+    </script>
+</body>
+</html>

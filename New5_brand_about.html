@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>중간계 AI 스튜디오 - 브랜드 소개</title>
+    <!-- 넥슨폰트 웹폰트 불러오기 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* 초기화 스타일 - 모든 요소의 기본 여백과 패딩을 없애요 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* 전체 페이지 스타일 */
+        body {
+            font-family: 'Noto Sans KR', sans-serif; /* 넥슨폰트 대신 구글 웹폰트 사용 */
+            line-height: 1.6; /* 줄 간격 설정 */
+            color: #333; /* 기본 글자색을 진한 회색으로 */
+            background-color: #f8f9fa; /* 연한 회색 배경색 */
+        }
+
+        /* 브랜드 소개 섹션 전체 컨테이너 */
+        .brand-container {
+            max-width: 1200px; /* 최대 너비 제한 */
+            margin: 0 auto; /* 가운데 정렬 */
+            padding: 50px 20px; /* 위아래 50px, 좌우 20px 여백 */
+            background-color: white; /* 흰색 배경 */
+            border-radius: 15px; /* 모서리를 둥글게 */
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); /* 그림자 효과 */
+            margin-top: 50px; /* 위쪽 여백 */
+            margin-bottom: 50px; /* 아래쪽 여백 */
+        }
+
+        /* 메인 타이틀 스타일 */
+        .midstudio-title {
+            font-size: 3rem; /* 큰 글씨 크기 */
+            font-weight: 900; /* 매우 굵은 글씨 */
+            color: black; /* 검은색 글자 */
+            text-align: center; /* 가운데 정렬 */
+            margin-bottom: 20px; /* 아래쪽 여백 */
+        }
+
+        /* 서브 타이틀 스타일 */
+        .midstudio-subtitle {
+            font-size: 1.5rem; /* 중간 글씨 크기 */
+            font-weight: 600; /* 약간 굵은 글씨 */
+            color: black; /* 검은색 글자 */
+            text-align: center; /* 가운데 정렬 */
+            margin-bottom: 40px; /* 아래쪽 여백 */
+        }
+
+        /* 콘텐츠 영역 (이미지 + 텍스트) */
+        .content-section {
+            display: flex; /* 플렉스 레이아웃 사용 */
+            align-items: flex-start; /* 위쪽 정렬 */
+            gap: 30px; /* 이미지와 텍스트 사이 간격 */
+            margin-bottom: 30px; /* 아래쪽 여백 */
+        }
+
+        /* 좌측 이미지 스타일 */
+        .brand-image {
+            flex: 0 0 300px; /* 고정 너비 300px, 축소되지 않음 */
+            width: 300px; /* 너비 고정 */
+            height: 250px; /* 높이 고정 */
+            object-fit: cover; /* 이미지 비율 유지하며 영역에 맞춤 */
+            border-radius: 15px; /* 모서리를 둥글게 */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* 그림자 효과 */
+        }
+
+        /* 우측 텍스트 영역 */
+        .text-content {
+            flex: 1; /* 남은 공간을 모두 차지 */
+            display: flex; /* 플렉스 레이아웃 */
+            flex-direction: column; /* 세로 방향 배치 */
+        }
+
+        /* 설명 텍스트 스타일 */
+        .midstudio-desc {
+            font-size: 1rem; /* 작은 글씨 크기 */
+            font-weight: 400; /* 보통 굵기 */
+            color: black; /* 검은색 글자 */
+            line-height: 1.8; /* 줄 간격을 넓혀서 가독성 향상 */
+            text-align: left; /* 왼쪽 정렬로 읽기 편하게 */
+            margin-bottom: 20px; /* 아래쪽 여백 */
+        }
+
+        /* 처음에 보이는 짧은 설명 (3줄만) */
+        .desc-preview {
+            display: block; /* 기본적으로 보이게 설정 */
+        }
+
+        /* 더보기 버튼 스타일 */
+        .more-btn {
+            display: inline-block; /* 인라인 블록으로 표시 */
+            background-color: #052f5d; /* 진한 파란색 배경 */
+            color: white; /* 흰색 글자 */
+            padding: 12px 25px; /* 버튼 안쪽 여백 */
+            font-size: 1rem; /* 글자 크기 */
+            font-weight: 600; /* 약간 굵은 글씨 */
+            text-decoration: none; /* 밑줄 제거 */
+            border: none; /* 테두리 없음 */
+            border-radius: 25px; /* 둥근 모서리 */
+            cursor: pointer; /* 마우스 포인터 모양 변경 */
+            transition: all 0.3s ease; /* 부드러운 효과 */
+            box-shadow: 0 4px 15px rgba(5,47,93,0.3); /* 버튼 그림자 */
+            align-self: flex-start; /* 왼쪽 정렬 */
+        }
+
+        /* 더보기 버튼에 마우스 올렸을 때 */
+        .more-btn:hover {
+            background-color: #041f42; /* 더 진한 파란색 */
+            transform: translateY(-2px); /* 살짝 위로 올라가는 효과 */
+            box-shadow: 0 6px 20px rgba(5,47,93,0.4); /* 더 진한 그림자 */
+        }
+
+        /* 모달 배경 (전체 화면을 덮는 어두운 배경) */
+        .modal-overlay {
+            position: fixed; /* 화면에 고정 */
+            top: 0; /* 맨 위부터 */
+            left: 0; /* 맨 왼쪽부터 */
+            width: 100%; /* 전체 너비 */
+            height: 100%; /* 전체 높이 */
+            background-color: rgba(0,0,0,0.7); /* 반투명 검은색 배경 */
+            display: none; /* 처음에는 숨김 */
+            justify-content: center; /* 가로 가운데 정렬 */
+            align-items: center; /* 세로 가운데 정렬 */
+            z-index: 1000; /* 다른 요소들보다 위에 표시 */
+        }
+
+        /* 모달 창 스타일 */
+        .modal-content {
+            background-color: white; /* 흰색 배경 */
+            padding: 40px; /* 안쪽 여백 */
+            border-radius: 15px; /* 모서리를 둥글게 */
+            max-width: 900px; /* 최대 너비 제한 */
+            max-height: 80vh; /* 최대 높이를 화면의 80%로 제한 */
+            overflow-y: auto; /* 내용이 많으면 스크롤 가능 */
+            position: relative; /* 자식 요소들의 위치 기준점 */
+            margin: 20px; /* 모든 방향 여백 */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); /* 그림자 효과 */
+        }
+
+        /* 모달 제목 스타일 */
+        .modal-title {
+            font-size: 2.5rem; /* 큰 글씨 크기 */
+            font-weight: 900; /* 매우 굵은 글씨 */
+            color: black; /* 검은색 글자 */
+            text-align: center; /* 가운데 정렬 */
+            margin-bottom: 15px; /* 아래쪽 여백 */
+        }
+
+        /* 모달 서브타이틀 스타일 */
+        .modal-subtitle {
+            font-size: 1.3rem; /* 중간 글씨 크기 */
+            font-weight: 600; /* 약간 굵은 글씨 */
+            color: black; /* 검은색 글자 */
+            text-align: center; /* 가운데 정렬 */
+            margin-bottom: 30px; /* 아래쪽 여백 */
+        }
+
+        /* 모달 내용 텍스트 스타일 */
+        .modal-text {
+            font-size: 1rem; /* 글씨 크기 */
+            font-weight: 400; /* 보통 굵기 */
+            color: black; /* 검은색 글자 */
+            line-height: 1.8; /* 줄 간격을 넓혀서 가독성 향상 */
+            text-align: left; /* 왼쪽 정렬로 읽기 편하게 */
+            margin-bottom: 20px; /* 아래쪽 여백 */
+        }
+
+        /* 닫기 버튼 스타일 */
+        .close-btn {
+            position: absolute; /* 절대 위치 */
+            top: 15px; /* 위에서 15px */
+            right: 20px; /* 오른쪽에서 20px */
+            background: none; /* 배경 없음 */
+            border: none; /* 테두리 없음 */
+            font-size: 2rem; /* 큰 글씨 크기 */
+            color: #666; /* 회색 글자 */
+            cursor: pointer; /* 마우스 포인터 모양 변경 */
+            transition: color 0.3s ease; /* 부드러운 색상 변화 */
+        }
+
+        /* 닫기 버튼에 마우스 올렸을 때 */
+        .close-btn:hover {
+            color: #333; /* 더 진한 회색 */
+        }
+
+        /* 모달 하단 닫기 버튼 스타일 */
+        .modal-close-btn {
+            display: block; /* 블록으로 표시 */
+            margin: 30px auto 0; /* 위쪽 30px 여백, 가운데 정렬 */
+            background-color: #6c757d; /* 회색 배경 */
+            color: white; /* 흰색 글자 */
+            padding: 12px 30px; /* 버튼 안쪽 여백 */
+            font-size: 1rem; /* 글자 크기 */
+            font-weight: 600; /* 약간 굵은 글씨 */
+            border: none; /* 테두리 없음 */
+            border-radius: 25px; /* 둥근 모서리 */
+            cursor: pointer; /* 마우스 포인터 모양 변경 */
+            transition: all 0.3s ease; /* 부드러운 효과 */
+        }
+
+        /* 모달 하단 닫기 버튼에 마우스 올렸을 때 */
+        .modal-close-btn:hover {
+            background-color: #5a6268; /* 더 진한 회색 */
+            transform: translateY(-2px); /* 살짝 위로 올라가는 효과 */
+        }
+
+        /* 태블릿 크기에서의 반응형 디자인 (768px 이하) */
+        @media (max-width: 768px) {
+            .brand-container {
+                margin: 20px; /* 여백 줄이기 */
+                padding: 30px 15px; /* 패딩 줄이기 */
+            }
+            
+            .midstudio-title {
+                font-size: 2.2rem; /* 타이틀 글씨 크기 줄이기 */
+                margin-bottom: 15px; /* 여백 줄이기 */
+            }
+            
+            .midstudio-subtitle {
+                font-size: 1.2rem; /* 서브타이틀 글씨 크기 줄이기 */
+                margin-bottom: 30px; /* 여백 줄이기 */
+            }
+            
+            /* 태블릿에서는 세로 배치로 변경 */
+            .content-section {
+                flex-direction: column; /* 세로 방향으로 변경 */
+                align-items: center; /* 가운데 정렬 */
+                gap: 20px; /* 간격 줄이기 */
+            }
+            
+            .brand-image {
+                flex: none; /* 플렉스 해제 */
+                width: 100%; /* 전체 너비 */
+                max-width: 400px; /* 최대 너비 제한 */
+                height: 200px; /* 높이 줄이기 */
+            }
+            
+            .text-content {
+                width: 100%; /* 전체 너비 */
+            }
+            
+            .midstudio-desc {
+                font-size: 0.95rem; /* 설명 글씨 크기 줄이기 */
+            }
+            
+            .modal-content {
+                padding: 25px; /* 모달 패딩 줄이기 */
+                margin: 10px; /* 모달 여백 줄이기 */
+            }
+            
+            .modal-title {
+                font-size: 2rem; /* 모달 타이틀 크기 줄이기 */
+            }
+            
+            .modal-subtitle {
+                font-size: 1.1rem; /* 모달 서브타이틀 크기 줄이기 */
+            }
+        }
+
+        /* 모바일 크기에서의 반응형 디자인 (480px 이하) */
+        @media (max-width: 480px) {
+            .brand-container {
+                margin: 10px; /* 여백 더 줄이기 */
+                padding: 20px 10px; /* 패딩 더 줄이기 */
+            }
+            
+            .midstudio-title {
+                font-size: 1.8rem; /* 타이틀 더 작게 */
+                margin-bottom: 10px; /* 여백 더 줄이기 */
+            }
+            
+            .midstudio-subtitle {
+                font-size: 1rem; /* 서브타이틀 더 작게 */
+                margin-bottom: 25px; /* 여백 더 줄이기 */
+            }
+            
+            .content-section {
+                gap: 15px; /* 간격 더 줄이기 */
+            }
+            
+            .brand-image {
+                height: 150px; /* 이미지 높이 더 줄이기 */
+            }
+            
+            .midstudio-desc {
+                font-size: 0.9rem; /* 설명 글씨 더 작게 */
+            }
+            
+            .more-btn {
+                padding: 10px 20px; /* 버튼 크기 줄이기 */
+                font-size: 0.9rem; /* 글자 크기 줄이기 */
+            }
+            
+            .modal-content {
+                padding: 20px; /* 모달 패딩 더 줄이기 */
+                margin: 5px; /* 모달 여백 더 줄이기 */
+                max-height: 90vh; /* 모바일에서 더 많은 공간 사용 */
+            }
+            
+            .modal-title {
+                font-size: 1.5rem; /* 모달 타이틀 더 작게 */
+            }
+            
+            .modal-subtitle {
+                font-size: 1rem; /* 모달 서브타이틀 더 작게 */
+            }
+            
+            .modal-text {
+                font-size: 0.9rem; /* 모달 텍스트 더 작게 */
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 브랜드 소개 섹션 시작 -->
+    <section class="brand-container">
+        <!-- 메인 타이틀 -->
+        <h1 class="midstudio-title">중간계 AI 스튜디오</h1>
+        
+        <!-- 서브 타이틀 -->
+        <h2 class="midstudio-subtitle">사업 실행의 파트너, 원하는 것을 구현합니다</h2>
+        
+        <!-- 콘텐츠 섹션 (이미지 + 텍스트) -->
+        <div class="content-section">
+            <!-- 좌측 이미지 -->
+            <img src="images/pd2.jpg" alt="AI 최적화 쇼츠릴스" class="brand-image">
+            
+            <!-- 우측 텍스트 영역 -->
+            <div class="text-content">
+                <!-- 짧은 설명 (처음에 3줄만 보임) -->
+                <div class="desc-preview">
+                    <p class="midstudio-desc">
+                        좋은 아이디어가 있다고 해서, 그 자체로 좋은 사업이 되는 것은 아닙니다. 반짝이는 아이디어도 실행으로 이어지지 않으면 사라지고 맙니다. 중간계 AI 스튜디오는 그 간극을 메우는 전략 파트너입니다.<br><br>
+                        우리는 소상공인과 자영업자, 크리에이터와 창업가의 고민을 누구보다 잘 이해합니다. "무엇을 어떻게 보여줘야 할까?" "어떻게 하면 고객에게 잘 도달할 수 있을까?" 이런 고민에 대해 감각과 전략을 결합해 실질적인 해답을 제시합니다.<br><br>
+                        브랜드 상세페이지, 쇼츠·릴스 영상, 홈페이지, 챗봇 등 AI에 최적화된 콘텐츠를 기획·제작하여 당신의 브랜드가 더 많이 검색되고, 더 쉽게 기억되고, 더 효과적으로 매출로 연결될 수 있도록 돕습니다.
+                    </p>
+                </div>
+                
+                <!-- 더보기 버튼 -->
+                <button class="more-btn" onclick="openModal()">더보기</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 모달 창 (처음에는 숨겨져 있음) -->
+    <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <!-- 모달 닫기 버튼 (X) -->
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+            
+            <!-- 모달 제목 -->
+            <h1 class="modal-title">중간계 AI 스튜디오</h1>
+            
+            <!-- 모달 서브타이틀 -->
+            <h2 class="modal-subtitle">사업 실행의 파트너, 원하는 것을 구현합니다</h2>
+            
+            <!-- 전체 설명 텍스트 -->
+            <div class="modal-text">
+                <p>좋은 아이디어가 있다고 해서, 그 자체로 좋은 사업이 되는 것은 아닙니다. 반짝이는 아이디어도 실행으로 이어지지 않으면 사라지고 맙니다. 중간계 AI 스튜디오는 그 간극을 메우는 전략 파트너입니다.</p>
+                
+                <p>우리는 소상공인과 자영업자, 크리에이터와 창업가의 고민을 누구보다 잘 이해합니다. "무엇을 어떻게 보여줘야 할까?" "어떻게 하면 고객에게 잘 도달할 수 있을까?" 이런 고민에 대해 감각과 전략을 결합해 실질적인 해답을 제시합니다.</p>
+                
+                <p>브랜드 상세페이지, 쇼츠·릴스 영상, 홈페이지, 챗봇 등 AI에 최적화된 콘텐츠를 기획·제작하여 당신의 브랜드가 더 많이 검색되고, 더 쉽게 기억되고, 더 효과적으로 매출로 연결될 수 있도록 돕습니다.</p>
+                
+                <p>우리는 단순한 제작자가 아닙니다. 창업가의 언어와 크리에이터의 감성을 모두 이해하는 '실행력 있는 감각', '감각 있는 실행력'을 가진 팀입니다.</p>
+                
+                <p>아이디어를 현실로, 브랜드를 결과로. 중간계 AI 스튜디오가 당신의 브랜드 여정에 함께하겠습니다.</p>
+                
+                <!-- AI가 추가한 3~4줄 설명 -->
+                <p><strong>우리의 차별점:</strong></p>
+                <p>• <strong>데이터 기반 전략</strong>: 단순한 감각이 아닌, 시장 데이터와 고객 행동 분석을 바탕으로 한 과학적 접근으로 성공 확률을 높입니다.</p>
+                <p>• <strong>원스톱 솔루션</strong>: 브랜딩부터 마케팅, 기술 구현까지 모든 과정을 한 곳에서 해결하여 일관성 있는 브랜드 경험을 제공합니다.</p>
+                <p>• <strong>지속적인 파트너십</strong>: 일회성 제작이 아닌, 브랜드 성장과 함께하는 장기적 동반자 관계를 통해 지속적인 성과 개선을 추구합니다.</p>
+                <p>• <strong>검증된 성과</strong>: 수많은 소상공인과 창업가들의 매출 증대와 브랜드 성장을 실제로 이끌어낸 경험과 노하우를 바탕으로 확실한 결과를 보장합니다.</p>
+            </div>
+            
+            <!-- 모달 하단 닫기 버튼 -->
+            <button class="modal-close-btn" onclick="closeModal()">닫기</button>
+        </div>
+    </div>
+
+    <!-- 페이지 내용 예시 -->
+    <main style="padding: 50px 20px; text-align: center; background-color: white;">
+        <h2>브랜드 소개 섹션이 완성되었습니다!</h2>
+        <p>좌측에 이미지, 우측에 텍스트가 배치된 레이아웃입니다.</p>
+        <p>처음에는 3줄만 보이고, '더보기' 버튼을 클릭하면 전체 내용을 확인할 수 있습니다.</p>
+        <p>화면 크기를 조절하여 반응형 동작도 확인해보세요.</p>
+    </main>
+
+    <script>
+        // 모달 창을 여는 함수
+        function openModal() {
+            // 모달 오버레이를 찾아요
+            const modalOverlay = document.getElementById('modalOverlay');
+            const modalContent = document.querySelector('.modal-content');
+            
+            // 모달 오버레이 보이기
+            modalOverlay.style.display = 'flex';
+            
+            // 모달 내용에 애니메이션 효과
+            modalContent.style.opacity = '0';
+            modalContent.style.transform = 'scale(0.8) translateY(-50px)';
+            
+            // 부드러운 나타나는 효과
+            setTimeout(function() {
+                modalContent.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                modalContent.style.opacity = '1';
+                modalContent.style.transform = 'scale(1) translateY(0)';
+            }, 10);
+            
+            // 페이지 스크롤 막기
+            document.body.style.overflow = 'hidden';
+            
+            console.log('모달이 열렸습니다!');
+        }
+
+        // 모달 창을 닫는 함수
+        function closeModal() {
+            const modalOverlay = document.getElementById('modalOverlay');
+            const modalContent = document.querySelector('.modal-content');
+            
+            // 모달 내용에 사라지는 애니메이션
+            modalContent.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            modalContent.style.opacity = '0';
+            modalContent.style.transform = 'scale(0.8) translateY(-50px)';
+            
+            // 애니메이션 완료 후 모달 숨기기
+            setTimeout(function() {
+                modalOverlay.style.display = 'none';
+            }, 300);
+            
+            // 페이지 스크롤 허용
+            document.body.style.overflow = 'auto';
+            
+            console.log('모달이 닫혔습니다!');
+        }
+
+        // 키보드 이벤트 처리 (ESC 키로 모달 닫기)
+        document.addEventListener('keydown', function(event) {
+            // ESC 키가 눌렸는지 확인
+            if (event.key === 'Escape') {
+                // 모달이 열려있는지 확인
+                const modalOverlay = document.getElementById('modalOverlay');
+                if (modalOverlay.style.display === 'flex') {
+                    // 모달 닫기
+                    closeModal();
+                    console.log('ESC 키로 모달을 닫았습니다!');
+                }
+            }
+        });
+
+        // 페이지 로딩 시 애니메이션 효과
+        document.addEventListener('DOMContentLoaded', function() {
+            // 브랜드 컨테이너를 찾아요
+            const brandContainer = document.querySelector('.brand-container');
+            
+            // 처음에는 투명하게 설정
+            brandContainer.style.opacity = '0';
+            brandContainer.style.transform = 'translateY(30px)';
+            
+            // 0.3초 후에 나타나는 효과
+            setTimeout(function() {
+                brandContainer.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+                brandContainer.style.opacity = '1';
+                brandContainer.style.transform = 'translateY(0)';
+            }, 300);
+        });
+
+        // 더보기 버튼 클릭 시 효과
+        document.addEventListener('DOMContentLoaded', function() {
+            // 더보기 버튼을 찾아요
+            const moreBtn = document.querySelector('.more-btn');
+            
+            // 버튼에 클릭 이벤트 추가
+            moreBtn.addEventListener('click', function() {
+                // 클릭 효과 추가 (살짝 축소했다가 원래대로)
+                this.style.transform = 'scale(0.95)';
+                setTimeout(function() {
+                    moreBtn.style.transform = '';
+                }, 150);
+            });
+        });
+
+        // 이미지 로딩 에러 처리
+        document.addEventListener('DOMContentLoaded', function() {
+            // 브랜드 이미지를 찾아요
+            const brandImage = document.querySelector('.brand-image');
+            
+            // 이미지 로딩 에러 시 대체 처리
+            brandImage.addEventListener('error', function() {
+                // 이미지 로딩에 실패하면 대체 텍스트 표시
+                this.style.display = 'none';
+                
+                // 대체 텍스트를 담을 div 생성
+                const placeholder = document.createElement('div');
+                placeholder.style.cssText = `
+                    width: 300px;
+                    height: 250px;
+                    background-color: #f0f0f0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #666;
+                    font-size: 14px;
+                    border-radius: 15px;
+                    flex: 0 0 300px;
+                `;
+                placeholder.textContent = '이미지를 불러올 수 없습니다';
+                
+                // 원본 이미지 다음에 대체 요소 삽입
+                this.parentNode.insertBefore(placeholder, this.nextSibling);
+            });
+        });
+    </script>
+</body>
+</html>

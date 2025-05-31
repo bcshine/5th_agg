@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 - 중간계 AI 스튜디오</title>
+    
+    <!-- 외부 폰트 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 스타일시트 -->
+    <link rel="stylesheet" href="auth-styles.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-header">
+            <img src="images/logo1.png" alt="중간계AI 스튜디오 로고" class="auth-logo">
+            <h1>중간계AI 스튜디오</h1>
+            <p>로그인하여 더 많은 서비스를 이용하세요</p>
+        </div>
+
+        <div class="auth-form-container">
+            <form id="loginForm" class="auth-form">
+                <div class="input-group">
+                    <label for="email">이메일</label>
+                    <input type="email" id="email" name="email" required placeholder="이메일을 입력하세요">
+                </div>
+
+                <div class="input-group">
+                    <label for="password">비밀번호</label>
+                    <div class="password-input-container">
+                        <input type="password" id="password" name="password" required placeholder="비밀번호를 입력하세요">
+                        <button type="button" class="password-toggle" onclick="togglePassword('password')">
+                            <i class="far fa-eye" id="password-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-options">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="rememberMe">
+                        <span class="checkmark"></span>
+                        자동 로그인
+                    </label>
+                    <a href="#" class="forgot-password">비밀번호를 잊으셨나요?</a>
+                </div>
+
+                <button type="submit" class="auth-btn primary">로그인</button>
+                
+                <div class="divider">
+                    <span>또는</span>
+                </div>
+
+                <button type="button" class="auth-btn secondary" onclick="location.href='register.html'">
+                    회원가입
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <a href="index.html" class="back-to-home">
+                    <i class="fas fa-arrow-left"></i>
+                    메인으로 돌아가기
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p>로그인 중입니다...</p>
+    </div>
+
+    <div id="messageModal" class="message-modal" style="display: none;">
+        <div class="message-content">
+            <span id="messageText"></span>
+            <button onclick="closeMessage()" class="message-close">확인</button>
+        </div>
+    </div>
+
+    <!-- Firebase 스크립트 -->
+    <script type="module" src="auth.js"></script>
+</body>
+</html> 

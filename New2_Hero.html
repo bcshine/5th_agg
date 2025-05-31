@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>중간계 AI 스튜디오 - 히어로</title>
+    <!-- 넥슨폰트 웹폰트 불러오기 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* 초기화 스타일 - 모든 요소의 기본 여백과 패딩을 없애요 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* 전체 페이지 스타일 */
+        body {
+            font-family: 'Noto Sans KR', sans-serif; /* 넥슨폰트 대신 구글 웹폰트 사용 */
+            overflow-x: hidden; /* 가로 스크롤 방지 */
+        }
+
+        /* 히어로 섹션 전체 컨테이너 */
+        .hero-section {
+            position: relative; /* 자식 요소들의 절대 위치 기준점 */
+            width: 100%; /* 화면 전체 너비 */
+            height: 100vh; /* 화면 전체 높이 */
+            overflow: hidden; /* 넘치는 부분 숨기기 */
+        }
+
+        /* 슬라이드 컨테이너 */
+        .hero-slider {
+            position: relative; /* 슬라이드들의 위치 기준점 */
+            width: 100%; /* 전체 너비 */
+            height: 100%; /* 전체 높이 */
+        }
+
+        /* 각각의 슬라이드 */
+        .hero-slide {
+            position: absolute; /* 절대 위치로 겹쳐서 배치 */
+            top: 0; /* 맨 위부터 */
+            left: 0; /* 맨 왼쪽부터 */
+            width: 100%; /* 전체 너비 */
+            height: 100%; /* 전체 높이 */
+            background-size: cover; /* 배경 이미지를 화면에 꽉 차게 */
+            background-position: center; /* 배경 이미지를 가운데 정렬 */
+            background-repeat: no-repeat; /* 배경 이미지 반복 안함 */
+            display: flex; /* 내용물을 가운데 정렬하기 위해 flex 사용 */
+            align-items: center; /* 세로 가운데 정렬 */
+            justify-content: center; /* 가로 가운데 정렬 */
+            opacity: 0; /* 처음에는 투명하게 숨김 */
+            transition: opacity 1s ease-in-out; /* 부드러운 페이드 효과 */
+        }
+
+        /* 현재 보이는 슬라이드 */
+        .hero-slide.active {
+            opacity: 1; /* 완전히 보이게 */
+        }
+
+        /* 첫 번째 슬라이드 배경 이미지 */
+        .hero-slide:nth-child(1) {
+            background-image: url('images/hero01.jpg');
+        }
+
+        /* 두 번째 슬라이드 배경 이미지 */
+        .hero-slide:nth-child(2) {
+            background-image: url('images/hero02.jpg');
+        }
+
+        /* 세 번째 슬라이드 배경 이미지 */
+        .hero-slide:nth-child(3) {
+            background-image: url('images/hero03.jpg');
+        }
+
+        /* 슬라이드 내용물 컨테이너 */
+        .hero-content {
+            text-align: center; /* 텍스트 가운데 정렬 */
+            color: white; /* 글자색을 흰색으로 */
+            max-width: 800px; /* 최대 너비 제한 */
+            padding: 0 20px; /* 좌우 여백 */
+            z-index: 2; /* 다른 요소들보다 위에 표시 */
+        }
+
+        /* 브랜드명 스타일 */
+        .hero-brand {
+            font-size: 3.5rem; /* 큰 글씨 크기 */
+            font-weight: 900; /* 매우 굵은 글씨 */
+            margin-bottom: 20px; /* 아래쪽 여백 */
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7); /* 글자 그림자로 가독성 향상 */
+            line-height: 1.2; /* 줄 간격 */
+        }
+
+        /* 슬로건 스타일 */
+        .hero-slogan {
+            font-size: 2rem; /* 중간 글씨 크기 */
+            font-weight: 700; /* 굵은 글씨 */
+            margin-bottom: 15px; /* 아래쪽 여백 */
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7); /* 글자 그림자 */
+            line-height: 1.3; /* 줄 간격 */
+        }
+
+        /* 설명 텍스트 스타일 */
+        .hero-desc {
+            font-size: 1.2rem; /* 작은 글씨 크기 */
+            font-weight: 400; /* 보통 굵기 */
+            margin-bottom: 30px; /* 아래쪽 여백 */
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.7); /* 글자 그림자 */
+            line-height: 1.5; /* 줄 간격 */
+        }
+
+        /* 예약하기 버튼 스타일 */
+        .hero-button {
+            display: inline-block; /* 인라인 블록으로 표시 */
+            background-color: #052f5d; /* 파란색 배경 */
+            color: white; /* 흰색 글자 */
+            padding: 10px 30px; /* 버튼 안쪽 여백 */
+            font-size: 1.1rem; /* 글자 크기 */
+            font-weight: 600; /* 약간 굵은 글씨 */
+            text-decoration: none; /* 밑줄 제거 */
+            border-radius: 50px; /* 둥근 모서리 */
+            transition: all 0.3s ease; /* 부드러운 효과 */
+            box-shadow: 0 4px 15px rgba(0,123,255,0.3); /* 버튼 그림자 */
+            text-shadow: none; /* 버튼 텍스트는 그림자 없음 */
+        }
+
+        /* 예약하기 버튼에 마우스 올렸을 때 */
+        .hero-button:hover {
+            background-color: #0056b3; /* 더 진한 파란색 */
+            transform: translateY(-2px); /* 살짝 위로 올라가는 효과 */
+            box-shadow: 0 6px 20px rgba(0,123,255,0.4); /* 더 진한 그림자 */
+        }
+
+        /* 왼쪽 화살표 버튼 */
+        .hero-arrow {
+            position: absolute; /* 절대 위치 */
+            top: 50%; /* 세로 가운데 */
+            transform: translateY(-50%); /* 정확한 가운데 정렬 */
+            background-color: white; /* 흰색 배경 */
+            color: #333; /* 진한 회색 글자 */
+            border: none; /* 테두리 없음 */
+            width: 50px; /* 버튼 너비 */
+            height: 50px; /* 버튼 높이 */
+            border-radius: 50%; /* 원형 버튼 */
+            font-size: 20px; /* 화살표 크기 */
+            cursor: pointer; /* 클릭 가능한 손가락 모양 */
+            z-index: 3; /* 다른 요소들보다 위에 */
+            transition: all 0.3s ease; /* 부드러운 효과 */
+            display: flex; /* 화살표를 가운데 정렬하기 위해 */
+            align-items: center; /* 세로 가운데 정렬 */
+            justify-content: center; /* 가로 가운데 정렬 */
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); /* 버튼 그림자 */
+        }
+
+        /* 왼쪽 화살표 위치 */
+        .hero-arrow.left {
+            left: 30px; /* 왼쪽에서 30px 떨어진 곳 */
+        }
+
+        /* 오른쪽 화살표 위치 */
+        .hero-arrow.right {
+            right: 30px; /* 오른쪽에서 30px 떨어진 곳 */
+        }
+
+        /* 화살표 버튼에 마우스 올렸을 때 */
+        .hero-arrow:hover {
+            background-color: #f8f9fa; /* 연한 회색 배경 */
+            transform: translateY(-50%) scale(1.1); /* 크기 살짝 확대 */
+        }
+
+        /* 슬라이드 인디케이터 (점들) */
+        .hero-indicators {
+            position: absolute; /* 절대 위치 */
+            bottom: 30px; /* 아래에서 30px */
+            left: 50%; /* 가로 가운데 */
+            transform: translateX(-50%); /* 정확한 가운데 정렬 */
+            display: flex; /* 가로로 나열 */
+            gap: 10px; /* 점들 사이 간격 */
+            z-index: 3; /* 다른 요소들보다 위에 */
+        }
+
+        /* 각각의 인디케이터 점 */
+        .hero-indicator {
+            width: 12px; /* 점의 너비 */
+            height: 12px; /* 점의 높이 */
+            border-radius: 50%; /* 원형 */
+            background-color: rgba(255,255,255,0.5); /* 반투명 흰색 */
+            cursor: pointer; /* 클릭 가능 */
+            transition: all 0.3s ease; /* 부드러운 효과 */
+        }
+
+        /* 현재 슬라이드의 인디케이터 */
+        .hero-indicator.active {
+            background-color: white; /* 완전한 흰색 */
+            transform: scale(1.2); /* 크기 확대 */
+        }
+
+        /* 태블릿 크기에서의 반응형 디자인 (768px 이하) */
+        @media (max-width: 768px) {
+            .hero-brand {
+                font-size: 2.5rem; /* 브랜드명 글씨 크기 줄이기 */
+            }
+            
+            .hero-slogan {
+                font-size: 1.5rem; /* 슬로건 글씨 크기 줄이기 */
+            }
+            
+            .hero-desc {
+                font-size: 1rem; /* 설명 글씨 크기 줄이기 */
+            }
+            
+            .hero-arrow {
+                width: 40px; /* 화살표 버튼 크기 줄이기 */
+                height: 40px;
+                font-size: 16px;
+            }
+            
+            .hero-arrow.left {
+                left: 20px; /* 화살표 위치 조정 */
+            }
+            
+            .hero-arrow.right {
+                right: 20px;
+            }
+        }
+
+        /* 모바일 크기에서의 반응형 디자인 (480px 이하) */
+        @media (max-width: 480px) {
+            .hero-brand {
+                font-size: 2rem; /* 브랜드명 더 작게 */
+                margin-bottom: 15px;
+            }
+            
+            .hero-slogan {
+                font-size: 1.2rem; /* 슬로건 더 작게 */
+                margin-bottom: 10px;
+            }
+            
+            .hero-desc {
+                font-size: 0.9rem; /* 설명 더 작게 */
+                margin-bottom: 25px;
+            }
+            
+            .hero-button {
+                padding: 12px 25px; /* 버튼 크기 줄이기 */
+                font-size: 1rem;
+            }
+            
+            .hero-content {
+                padding: 0 15px; /* 좌우 여백 줄이기 */
+            }
+            
+            .hero-arrow {
+                width: 35px; /* 화살표 더 작게 */
+                height: 35px;
+                font-size: 14px;
+            }
+            
+            .hero-arrow.left {
+                left: 15px; /* 화살표 위치 더 가깝게 */
+            }
+            
+            .hero-arrow.right {
+                right: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 히어로 섹션 시작 -->
+    <section class="hero-section">
+        <!-- 슬라이드 컨테이너 -->
+        <div class="hero-slider">
+            <!-- 첫 번째 슬라이드 -->
+            <div class="hero-slide active">
+                <div class="hero-content">
+                    <h1 class="hero-brand">중간계 AI 스튜디오</h1>
+                    <h2 class="hero-slogan">당신의 아이디어, 브랜드가 되다</h2>
+                    <p class="hero-desc">브랜드 이름에서부터 웹사이트까지, 사업성공을 함께 합니다</p>
+                    <a href="#reservation" class="hero-button">예약하기</a>
+                </div>
+            </div>
+
+            <!-- 두 번째 슬라이드 -->
+            <div class="hero-slide">
+                <div class="hero-content">
+                    <h1 class="hero-brand">중간계 AI 스튜디오</h1>
+                    <h2 class="hero-slogan">쉽고 빠르게, 원하는 것을 구축하다</h2>
+                    <p class="hero-desc">아이디어에서 실현까지 중간계 AI가 함께합니다</p>
+                    <a href="#reservation" class="hero-button">예약하기</a>
+                </div>
+            </div>
+
+            <!-- 세 번째 슬라이드 -->
+            <div class="hero-slide">
+                <div class="hero-content">
+                    <h1 class="hero-brand">중간계 AI 스튜디오</h1>
+                    <h2 class="hero-slogan">상상력에 날개를, 날아 오르다</h2>
+                    <p class="hero-desc">꿈이 아니라, 현실이 될 것입니다</p>
+                    <a href="#reservation" class="hero-button">예약하기</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 왼쪽 화살표 버튼 -->
+        <button class="hero-arrow left" onclick="previousSlide()">
+            &#8249;
+        </button>
+
+        <!-- 오른쪽 화살표 버튼 -->
+        <button class="hero-arrow right" onclick="nextSlide()">
+            &#8250;
+        </button>
+
+        <!-- 슬라이드 인디케이터 (점들) -->
+        <div class="hero-indicators">
+            <div class="hero-indicator active" onclick="goToSlide(0)"></div>
+            <div class="hero-indicator" onclick="goToSlide(1)"></div>
+            <div class="hero-indicator" onclick="goToSlide(2)"></div>
+        </div>
+    </section>
+
+    <!-- 페이지 내용 예시 -->
+    <main style="padding: 50px 20px; text-align: center; background-color: #f8f9fa;">
+        <h2>히어로 섹션이 완성되었습니다!</h2>
+        <p>자동 슬라이딩과 수동 조작이 모두 가능합니다.</p>
+        <p>화면 크기를 조절하여 반응형 동작을 확인해보세요.</p>
+    </main>
+
+    <script>
+        // 현재 보이는 슬라이드 번호 (0부터 시작)
+        let currentSlide = 0;
+        
+        // 전체 슬라이드 개수
+        const totalSlides = 3;
+        
+        // 자동 슬라이딩을 위한 타이머
+        let autoSlideTimer;
+
+        // 다음 슬라이드로 이동하는 함수
+        function nextSlide() {
+            // 현재 슬라이드를 숨기고 다음 슬라이드를 보여줘요
+            goToSlide((currentSlide + 1) % totalSlides);
+        }
+
+        // 이전 슬라이드로 이동하는 함수
+        function previousSlide() {
+            // 현재 슬라이드를 숨기고 이전 슬라이드를 보여줘요
+            goToSlide((currentSlide - 1 + totalSlides) % totalSlides);
+        }
+
+        // 특정 슬라이드로 이동하는 함수
+        function goToSlide(slideIndex) {
+            // 모든 슬라이드에서 active 클래스 제거 (숨기기)
+            const slides = document.querySelectorAll('.hero-slide');
+            const indicators = document.querySelectorAll('.hero-indicator');
+            
+            slides.forEach(slide => slide.classList.remove('active'));
+            indicators.forEach(indicator => indicator.classList.remove('active'));
+            
+            // 새로운 슬라이드와 인디케이터에 active 클래스 추가 (보이기)
+            slides[slideIndex].classList.add('active');
+            indicators[slideIndex].classList.add('active');
+            
+            // 현재 슬라이드 번호 업데이트
+            currentSlide = slideIndex;
+            
+            // 자동 슬라이딩 타이머 재시작
+            resetAutoSlide();
+        }
+
+        // 자동 슬라이딩 시작하는 함수
+        function startAutoSlide() {
+            // 5초마다 다음 슬라이드로 자동 이동
+            autoSlideTimer = setInterval(nextSlide, 5000);
+        }
+
+        // 자동 슬라이딩 멈추는 함수
+        function stopAutoSlide() {
+            // 타이머 정지
+            if (autoSlideTimer) {
+                clearInterval(autoSlideTimer);
+            }
+        }
+
+        // 자동 슬라이딩 재시작하는 함수
+        function resetAutoSlide() {
+            // 기존 타이머 정지하고 새로 시작
+            stopAutoSlide();
+            startAutoSlide();
+        }
+
+        // 페이지가 로드되면 자동 슬라이딩 시작
+        document.addEventListener('DOMContentLoaded', function() {
+            startAutoSlide();
+        });
+
+        // 마우스가 히어로 섹션에 올라가면 자동 슬라이딩 멈춤
+        document.querySelector('.hero-section').addEventListener('mouseenter', function() {
+            stopAutoSlide();
+        });
+
+        // 마우스가 히어로 섹션에서 벗어나면 자동 슬라이딩 재시작
+        document.querySelector('.hero-section').addEventListener('mouseleave', function() {
+            startAutoSlide();
+        });
+
+        // 키보드로도 슬라이드 조작 가능하게 하기
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowLeft') {
+                // 왼쪽 화살표 키를 누르면 이전 슬라이드
+                previousSlide();
+            } else if (event.key === 'ArrowRight') {
+                // 오른쪽 화살표 키를 누르면 다음 슬라이드
+                nextSlide();
+            }
+        });
+
+        // 터치 스와이프 기능 (모바일용)
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        // 터치 시작할 때 위치 기록
+        document.querySelector('.hero-section').addEventListener('touchstart', function(event) {
+            touchStartX = event.changedTouches[0].screenX;
+        });
+
+        // 터치 끝날 때 스와이프 방향 판단
+        document.querySelector('.hero-section').addEventListener('touchend', function(event) {
+            touchEndX = event.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        // 스와이프 방향에 따라 슬라이드 이동
+        function handleSwipe() {
+            const swipeThreshold = 50; // 최소 스와이프 거리
+            
+            if (touchEndX < touchStartX - swipeThreshold) {
+                // 왼쪽으로 스와이프하면 다음 슬라이드
+                nextSlide();
+            }
+            
+            if (touchEndX > touchStartX + swipeThreshold) {
+                // 오른쪽으로 스와이프하면 이전 슬라이드
+                previousSlide();
+            }
+        }
+    </script>
+</body>
+</html>

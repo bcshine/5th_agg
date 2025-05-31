@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>중간계 AI 스튜디오 - 제품</title>
+    <!-- 넥슨폰트 웹폰트 불러오기 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* 초기화 스타일 - 모든 요소의 기본 여백과 패딩을 없애요 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* 전체 페이지 스타일 */
+        body {
+            font-family: 'Noto Sans KR', sans-serif; /* 넥슨폰트 대신 구글 웹폰트 사용 */
+            line-height: 1.6; /* 줄 간격 설정 */
+            color: #333; /* 기본 글자색을 진한 회색으로 */
+        }
+
+        /* 제품 섹션 전체 컨테이너 */
+        .product-container {
+            max-width: 1200px; /* 최대 너비 제한 */
+            margin: 0 auto; /* 가운데 정렬 */
+            padding: 50px 20px; /* 위아래 50px, 좌우 20px 여백 */
+        }
+
+        /* 매장 대표 이미지 */
+        .shop-image {
+            width: 100%; /* 전체 너비 */
+            height: 300px; /* 높이 고정 */
+            object-fit: cover; /* 이미지 비율 유지하며 영역에 맞춤 */
+            border-radius: 15px; /* 모서리를 둥글게 */
+            margin-bottom: 40px; /* 아래쪽 여백 */
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); /* 그림자 효과 */
+        }
+
+        /* 제품 타이틀 스타일 */
+        .product-title {
+            font-size: 2.5rem; /* 큰 글씨 크기 */
+            font-weight: 900; /* 매우 굵은 글씨 */
+            color: black; /* 검은색 글자 */
+            text-align: center; /* 가운데 정렬 */
+            margin-bottom: 50px; /* 아래쪽 여백 */
+        }
+
+        /* 제품들을 담는 그리드 컨테이너 */
+        .products-grid {
+            display: grid; /* 그리드 레이아웃 사용 */
+            grid-template-columns: 1fr 1fr; /* 2열로 배치 (1:1 비율) */
+            grid-template-rows: 1fr 1fr; /* 2행으로 배치 (1:1 비율) */
+            gap: 30px; /* 제품들 사이 간격 */
+            margin-bottom: 40px; /* 아래쪽 여백 */
+        }
+
+        /* 각각의 제품 카드 */
+        .product-card {
+            background-color: white; /* 흰색 배경 */
+            border-radius: 15px; /* 모서리를 둥글게 */
+            overflow: hidden; /* 넘치는 부분 숨기기 */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* 그림자 효과 */
+            transition: transform 0.3s ease, box-shadow 0.3s ease; /* 부드러운 효과 */
+        }
+
+        /* 제품 카드에 마우스 올렸을 때 */
+        .product-card:hover {
+            transform: translateY(-5px); /* 살짝 위로 올라가는 효과 */
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15); /* 더 진한 그림자 */
+        }
+
+        /* 제품 이미지 */
+        .product-image {
+            width: 100%; /* 전체 너비 */
+            height: 200px; /* 높이 고정 */
+            object-fit: cover; /* 이미지 비율 유지하며 영역에 맞춤 */
+            margin: 3px; /* 좌우 여백 3px씩 */
+            width: calc(100% - 6px); /* 여백을 고려한 너비 계산 */
+        }
+
+        /* 제품 설명 영역 */
+        .product-content {
+            padding: 20px; /* 안쪽 여백 */
+            height: auto; /* 높이를 자동으로 조정 */
+            min-height: 200px; /* 최소 높이 설정으로 균등한 카드 크기 유지 */
+        }
+
+        /* 제품 제목 스타일 */
+        .product-content h2 {
+            font-size: 1.3rem; /* 중간 글씨 크기 */
+            font-weight: 700; /* 굵은 글씨 */
+            color: black; /* 검은색 글자 */
+            margin-bottom: 10px; /* 아래쪽 여백 */
+        }
+
+        /* 제품 설명 스타일 */
+        .product-content p {
+            font-size: 0.9rem; /* 작은 글씨 크기 */
+            font-weight: 400; /* 보통 굵기 */
+            color: black; /* 검은색 글자 */
+            line-height: 1.6; /* 줄 간격을 넓혀서 가독성 향상 */
+            text-align: left; /* 왼쪽 정렬로 읽기 편하게 */
+        }
+
+        /* 구매하기 버튼 영역 */
+        .purchase-section {
+            text-align: right; /* 오른쪽 정렬 */
+            margin-top: 30px; /* 위쪽 여백 */
+        }
+
+        /* 구매하기 버튼 스타일 */
+        .purchase-btn {
+            display: inline-block; /* 인라인 블록으로 표시 */
+            background-color: #052f5d; /* 진한 파란색 배경 */
+            color: white; /* 흰색 글자 */
+            padding: 15px 30px; /* 버튼 안쪽 여백 */
+            font-size: 1.1rem; /* 글자 크기 */
+            font-weight: 600; /* 약간 굵은 글씨 */
+            text-decoration: none; /* 밑줄 제거 */
+            border-radius: 20%; /* 둥근 모서리 (radius 20%) */
+            transition: all 0.3s ease; /* 부드러운 효과 */
+            box-shadow: 0 4px 15px rgba(5,47,93,0.3); /* 버튼 그림자 */
+        }
+
+        /* 구매하기 버튼에 마우스 올렸을 때 */
+        .purchase-btn:hover {
+            background-color: #041f42; /* 더 진한 파란색 */
+            transform: translateY(-2px); /* 살짝 위로 올라가는 효과 */
+            box-shadow: 0 6px 20px rgba(5,47,93,0.4); /* 더 진한 그림자 */
+        }
+
+        /* 태블릿 크기에서의 반응형 디자인 (768px 이하) */
+        @media (max-width: 768px) {
+            .product-container {
+                padding: 30px 15px; /* 패딩 줄이기 */
+            }
+            
+            .shop-image {
+                height: 200px; /* 매장 이미지 높이 줄이기 */
+                margin-bottom: 30px; /* 여백 줄이기 */
+            }
+            
+            .product-title {
+                font-size: 2rem; /* 타이틀 글씨 크기 줄이기 */
+                margin-bottom: 30px; /* 여백 줄이기 */
+            }
+            
+            .products-grid {
+                gap: 20px; /* 제품들 사이 간격 줄이기 */
+                margin-bottom: 30px; /* 여백 줄이기 */
+            }
+            
+            .product-image {
+                height: 150px; /* 제품 이미지 높이 줄이기 */
+            }
+            
+            .product-content {
+                padding: 15px; /* 패딩 줄이기 */
+                min-height: 180px; /* 태블릿에서 최소 높이 조정 */
+            }
+            
+            .product-content h2 {
+                font-size: 1.1rem; /* 제품 제목 크기 줄이기 */
+            }
+            
+            .product-content p {
+                font-size: 0.85rem; /* 제품 설명 크기 줄이기 */
+            }
+        }
+
+        /* 모바일 크기에서의 반응형 디자인 (480px 이하) */
+        @media (max-width: 480px) {
+            .products-grid {
+                grid-template-columns: 1fr; /* 1열로 변경 (세로 배치) */
+                grid-template-rows: repeat(4, 1fr); /* 4행으로 변경 */
+                gap: 15px; /* 간격 더 줄이기 */
+            }
+            
+            .product-title {
+                font-size: 1.5rem; /* 타이틀 더 작게 */
+                margin-bottom: 25px; /* 여백 더 줄이기 */
+            }
+            
+            .shop-image {
+                height: 150px; /* 매장 이미지 더 작게 */
+                margin-bottom: 25px; /* 여백 더 줄이기 */
+            }
+            
+            .product-image {
+                height: 120px; /* 제품 이미지 더 작게 */
+            }
+            
+            .product-content {
+                padding: 12px; /* 패딩 더 줄이기 */
+                min-height: auto; /* 모바일에서는 최소 높이 제한 해제 */
+            }
+            
+            .product-content h2 {
+                font-size: 1rem; /* 제품 제목 더 작게 */
+                margin-bottom: 8px; /* 여백 줄이기 */
+            }
+            
+            .product-content p {
+                font-size: 0.8rem; /* 제품 설명 더 작게 */
+            }
+            
+            .purchase-btn {
+                padding: 12px 25px; /* 버튼 크기 줄이기 */
+                font-size: 1rem; /* 글자 크기 줄이기 */
+            }
+            
+            .purchase-section {
+                text-align: center; /* 모바일에서는 가운데 정렬 */
+                margin-top: 25px; /* 여백 줄이기 */
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 제품 섹션 시작 -->
+    <section class="product-container">
+        <!-- 매장 대표 이미지 -->
+        <img src="images/shop1.jpg" alt="중간계 AI 스튜디오 매장" class="shop-image">
+        
+        <!-- 제품 섹션 타이틀 -->
+        <h1 class="product-title">중간계 AI 스튜디오 4가지 상품</h1>
+        
+        <!-- 제품들을 담는 그리드 -->
+        <div class="products-grid">
+            <!-- 제품 1: AI 상세페이지 -->
+            <div class="product-card">
+                <img src="images/pd1.jpg" alt="AI 상세페이지" class="product-image">
+                <div class="product-content">
+                    <h2 class="ssp-title">AI 상세페이지</h2>
+                    <p class="ssp-desc">AI,인공지능 추천에 최적화된 상세페이지<br><br>
+                    고객의 구매 패턴을 분석하여 개인 맞춤형 상품을 추천합니다.<br>
+                    전환율을 최대 300% 향상시키는 스마트 레이아웃을 제공합니다.<br>
+                    실시간 데이터 분석으로 최적의 상품 배치를 자동으로 조정합니다.<br>
+                    모바일과 데스크톱 모든 환경에서 완벽한 사용자 경험을 보장합니다.</p>
+                </div>
+            </div>
+            
+            <!-- 제품 2: AI 최적화 쇼츠릴스 -->
+            <div class="product-card">
+                <img src="images/pd2.jpg" alt="AI 최적화 쇼츠릴스" class="product-image">
+                <div class="product-content">
+                    <h2 class="shorts-title">AI 최적화 쇼츠릴스</h2>
+                    <p class="shorts-desc">AI,인공지능 추천에 최적화된 쇼츠, 릴스<br><br>
+                    바이럴 알고리즘을 분석하여 최적의 콘텐츠 타이밍을 제안합니다.<br>
+                    트렌드 키워드와 해시태그를 자동으로 추천하여 노출도를 극대화합니다.<br>
+                    시청자 반응 패턴을 학습하여 참여도 높은 영상을 제작합니다.<br>
+                    인스타그램, 틱톡, 유튜브 쇼츠 모든 플랫폼에 최적화된 포맷을 지원합니다.</p>
+                </div>
+            </div>
+            
+            <!-- 제품 3: AI 반응형 홈페이지 -->
+            <div class="product-card">
+                <img src="images/pd3.jpg" alt="AI 반응형 홈페이지" class="product-image">
+                <div class="product-content">
+                    <h2 class="webpage-title">AI 반응형 홈페이지</h2>
+                    <p class="swebpage-desc">AI, 추천에 최적화된 홈페이지<br><br>
+                    사용자 행동 패턴을 실시간으로 분석하여 개인화된 콘텐츠를 제공합니다.<br>
+                    SEO 최적화와 로딩 속도 개선으로 검색 엔진 상위 노출을 보장합니다.<br>
+                    모든 디바이스에서 완벽한 반응형 디자인으로 사용자 경험을 극대화합니다.<br>
+                    A/B 테스트 자동화로 지속적인 성능 개선과 전환율 향상을 실현합니다.</p>
+                </div>
+            </div>
+            
+            <!-- 제품 4: AI 챗봇 -->
+            <div class="product-card">
+                <img src="images/pd4.jpg" alt="AI 챗봇" class="product-image">
+                <div class="product-content">
+                    <h2 class="chatbot-title">AI 챗봇</h2>
+                    <p class="chatbot-desc">현존 최고수준의 브랜드 AI 챗봇<br><br>
+                    24시간 무중단 고객 상담으로 언제든지 완벽한 서비스를 제공합니다.<br>
+                    자연어 처리 기술로 사람과 구분되지 않는 자연스러운 대화가 가능합니다.<br>
+                    고객 문의 유형을 학습하여 정확도 99% 이상의 답변을 제공합니다.<br>
+                    다국어 지원과 감정 분석으로 글로벌 고객까지 만족시키는 스마트 상담을 실현합니다.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 구매하기 버튼 섹션 -->
+        <div class="purchase-section">
+            <a href="https://smartstore.naver.com/" target="_blank" class="purchase-btn">구매하기</a>
+        </div>
+    </section>
+
+    <!-- 페이지 내용 예시 -->
+    <main style="padding: 50px 20px; text-align: center; background-color: #f8f9fa;">
+        <h2>제품 섹션이 완성되었습니다!</h2>
+        <p>4가지 AI 제품이 2x2 그리드로 배치되었습니다.</p>
+        <p>화면 크기를 조절하여 반응형 동작을 확인해보세요.</p>
+        <p>모바일에서는 1열로 세로 배치됩니다.</p>
+    </main>
+
+    <script>
+        // 제품 카드 클릭 시 효과음이나 추가 기능을 위한 JavaScript
+        document.addEventListener('DOMContentLoaded', function() {
+            // 모든 제품 카드를 찾아요
+            const productCards = document.querySelectorAll('.product-card');
+            
+            // 각 제품 카드에 클릭 이벤트 추가
+            productCards.forEach(function(card, index) {
+                card.addEventListener('click', function() {
+                    // 제품 카드를 클릭했을 때 콘솔에 메시지 출력
+                    console.log(`제품 ${index + 1}이 클릭되었습니다!`);
+                    
+                    // 클릭 효과 추가 (선택사항)
+                    card.style.transform = 'scale(0.98)';
+                    setTimeout(function() {
+                        card.style.transform = '';
+                    }, 150);
+                });
+            });
+            
+            // 구매하기 버튼 클릭 시 확인 메시지
+            const purchaseBtn = document.querySelector('.purchase-btn');
+            purchaseBtn.addEventListener('click', function(event) {
+                // 사용자에게 확인 메시지 보여주기
+                const confirmed = confirm('네이버 스마트스토어로 이동하시겠습니까?');
+                
+                // 사용자가 취소를 누르면 링크 이동 막기
+                if (!confirmed) {
+                    event.preventDefault();
+                }
+            });
+        });
+
+        // 이미지 로딩 에러 처리
+        document.addEventListener('DOMContentLoaded', function() {
+            // 모든 이미지를 찾아요
+            const images = document.querySelectorAll('img');
+            
+            // 각 이미지에 에러 처리 추가
+            images.forEach(function(img) {
+                img.addEventListener('error', function() {
+                    // 이미지 로딩에 실패하면 대체 텍스트 표시
+                    this.style.display = 'none';
+                    
+                    // 대체 텍스트를 담을 div 생성
+                    const placeholder = document.createElement('div');
+                    placeholder.style.cssText = `
+                        width: 100%;
+                        height: ${this.classList.contains('shop-image') ? '300px' : '200px'};
+                        background-color: #f0f0f0;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: #666;
+                        font-size: 14px;
+                        border-radius: 10px;
+                    `;
+                    placeholder.textContent = '이미지를 불러올 수 없습니다';
+                    
+                    // 원본 이미지 다음에 대체 요소 삽입
+                    this.parentNode.insertBefore(placeholder, this.nextSibling);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

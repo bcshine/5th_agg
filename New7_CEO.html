@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CEO 인사말 - 중간계 AI 스튜디오</title>
+    <!-- 넥슨폰트 웹폰트 불러오기 (초등학생도 읽기 쉬운 폰트) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 전체 페이지 기본 설정 (초등학생용 주석: 웹페이지 전체의 기본 모양을 정하는 곳) */
+        * {
+            margin: 0; /* 여백 없애기 */
+            padding: 0; /* 안쪽 여백 없애기 */
+            box-sizing: border-box; /* 크기 계산을 쉽게 하기 */
+        }
+
+        /* 전체 페이지 배경과 폰트 설정 */
+        body {
+            font-family: 'Noto Sans KR', sans-serif; /* 넥슨폰트 사용하기 */
+            background-color: white; /* 배경색을 흰색으로 */
+            color: #333; /* 글자색을 진한 회색으로 */
+            line-height: 1.6; /* 줄 간격을 넓게 해서 읽기 쉽게 */
+        }
+
+        /* CEO 섹션 전체 컨테이너 */
+        .ceo-container {
+            max-width: 1200px; /* 최대 너비 제한 */
+            margin: 0 auto; /* 가운데 정렬 */
+            padding: 60px 20px; /* 위아래 60px, 좌우 20px 여백 */
+            opacity: 0; /* 처음에는 안 보이게 */
+            transform: translateY(30px); /* 살짝 아래에서 시작 */
+            animation: fadeInUp 1s ease-out forwards; /* 부드럽게 나타나는 애니메이션 */
+        }
+
+        /* 페이드인 애니메이션 정의 */
+        @keyframes fadeInUp {
+            to {
+                opacity: 1; /* 완전히 보이게 */
+                transform: translateY(0); /* 원래 위치로 */
+            }
+        }
+
+        /* 메인 타이틀 스타일 */
+        .ceo-title {
+            font-size: 2.5rem; /* 큰 글씨 크기 */
+            font-weight: 700; /* 굵은 글씨 */
+            color: #000; /* 검은색 */
+            text-align: center; /* 가운데 정렬 */
+            margin-bottom: 20px; /* 아래쪽 여백 */
+        }
+
+        /* 서브 타이틀 스타일 */
+        .ceo-subtitle {
+            font-size: 1.5rem; /* 중간 글씨 크기 */
+            font-weight: 500; /* 중간 굵기 */
+            color: #000; /* 검은색 */
+            text-align: center; /* 가운데 정렬 */
+            margin-bottom: 50px; /* 아래쪽 여백 */
+            font-style: italic; /* 기울임체로 인용구 느낌 */
+        }
+
+        /* CEO 콘텐츠 영역 (좌우 배치) */
+        .ceo-content {
+            display: flex; /* 가로로 나란히 배치 */
+            align-items: flex-start; /* 위쪽 정렬 */
+            gap: 40px; /* 좌우 간격 */
+            margin-bottom: 30px; /* 아래쪽 여백 */
+        }
+
+        /* 왼쪽 이미지 영역 */
+        .ceo-image {
+            flex: 0 0 300px; /* 고정 너비 300px */
+        }
+
+        .ceo-image img {
+            width: 100%; /* 이미지를 영역에 맞게 */
+            height: auto; /* 비율 유지 */
+            border-radius: 15px; /* 모서리 둥글게 */
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15); /* 그림자 효과 */
+            transition: transform 0.3s ease; /* 부드러운 변화 */
+        }
+
+        .ceo-image img:hover {
+            transform: scale(1.05); /* 마우스 올리면 살짝 커지기 */
+        }
+
+        /* 오른쪽 텍스트 영역 */
+        .ceo-text {
+            flex: 1; /* 남은 공간 모두 사용 */
+        }
+
+        /* CEO 인사말 텍스트 */
+        .ceo-desc {
+            font-size: 1rem; /* 작은 글씨 크기 */
+            color: #000; /* 검은색 */
+            line-height: 1.8; /* 줄 간격 넓게 */
+            margin-bottom: 20px; /* 아래쪽 여백 */
+        }
+
+        /* 미리보기 텍스트 (처음에 보이는 일부) */
+        .preview-text {
+            display: block; /* 보이게 하기 */
+        }
+
+        /* 숨겨진 텍스트 (더보기 클릭 전까지 안 보임) */
+        .hidden-text {
+            display: none; /* 안 보이게 하기 */
+        }
+
+        /* 더보기 버튼 스타일 */
+        .more-btn {
+            background-color: #052f5d; /* 진한 파란색 배경 */
+            color: white; /* 흰색 글씨 */
+            border: none; /* 테두리 없애기 */
+            padding: 12px 30px; /* 안쪽 여백 */
+            border-radius: 25px; /* 둥근 모서리 */
+            font-size: 1rem; /* 글씨 크기 */
+            font-weight: 500; /* 중간 굵기 */
+            cursor: pointer; /* 마우스 포인터 모양 */
+            transition: all 0.3s ease; /* 부드러운 변화 */
+            box-shadow: 0 2px 10px rgba(5, 47, 93, 0.3); /* 그림자 */
+        }
+
+        .more-btn:hover {
+            background-color: #041f42; /* 마우스 올리면 더 진한 파란색 */
+            transform: translateY(-2px); /* 살짝 위로 올라가기 */
+            box-shadow: 0 4px 15px rgba(5, 47, 93, 0.4); /* 그림자 진하게 */
+        }
+
+        /* 모달 배경 (전체 화면을 덮는 어두운 배경) */
+        .modal-overlay {
+            position: fixed; /* 화면에 고정 */
+            top: 0; /* 맨 위부터 */
+            left: 0; /* 맨 왼쪽부터 */
+            width: 100%; /* 전체 너비 */
+            height: 100%; /* 전체 높이 */
+            background-color: rgba(0, 0, 0, 0.7); /* 반투명 검은색 */
+            display: none; /* 처음에는 안 보이게 */
+            justify-content: center; /* 가로 가운데 정렬 */
+            align-items: center; /* 세로 가운데 정렬 */
+            z-index: 1000; /* 다른 요소들보다 위에 */
+            opacity: 0; /* 투명하게 시작 */
+            transition: opacity 0.3s ease; /* 부드러운 나타남/사라짐 */
+        }
+
+        .modal-overlay.show {
+            display: flex; /* 보이게 하기 */
+            opacity: 1; /* 완전히 보이게 */
+        }
+
+        /* 모달 창 */
+        .modal-content {
+            background-color: white; /* 흰색 배경 */
+            border-radius: 15px; /* 둥근 모서리 */
+            padding: 40px; /* 안쪽 여백 */
+            max-width: 800px; /* 최대 너비 */
+            max-height: 80vh; /* 최대 높이 (화면의 80%) */
+            overflow-y: auto; /* 내용이 많으면 스크롤 */
+            position: relative; /* 닫기 버튼 위치 기준 */
+            transform: scale(0.7); /* 작게 시작 */
+            transition: transform 0.3s ease; /* 부드러운 크기 변화 */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); /* 그림자 */
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1); /* 원래 크기로 */
+        }
+
+        /* 모달 닫기 버튼 (X 표시) */
+        .close-btn {
+            position: absolute; /* 절대 위치 */
+            top: 15px; /* 위에서 15px */
+            right: 20px; /* 오른쪽에서 20px */
+            background: none; /* 배경 없애기 */
+            border: none; /* 테두리 없애기 */
+            font-size: 2rem; /* 큰 글씨 */
+            color: #666; /* 회색 */
+            cursor: pointer; /* 마우스 포인터 모양 */
+            transition: color 0.3s ease; /* 부드러운 색상 변화 */
+        }
+
+        .close-btn:hover {
+            color: #000; /* 마우스 올리면 검은색 */
+        }
+
+        /* 모달 내용 제목 */
+        .modal-title {
+            font-size: 2rem; /* 큰 글씨 */
+            font-weight: 700; /* 굵은 글씨 */
+            color: #000; /* 검은색 */
+            margin-bottom: 20px; /* 아래쪽 여백 */
+            text-align: center; /* 가운데 정렬 */
+        }
+
+        /* 모달 내용 텍스트 */
+        .modal-text {
+            font-size: 1.1rem; /* 조금 큰 글씨 */
+            line-height: 1.8; /* 줄 간격 넓게 */
+            color: #333; /* 진한 회색 */
+            margin-bottom: 30px; /* 아래쪽 여백 */
+        }
+
+        /* 서명 스타일 */
+        .signature {
+            text-align: right; /* 오른쪽 정렬 */
+            margin-top: 30px; /* 위쪽 여백 */
+            font-weight: 500; /* 중간 굵기 */
+            color: #052f5d; /* 진한 파란색 */
+        }
+
+        /* 모달 하단 닫기 버튼 */
+        .modal-close-btn {
+            background-color: #052f5d; /* 진한 파란색 */
+            color: white; /* 흰색 글씨 */
+            border: none; /* 테두리 없애기 */
+            padding: 12px 30px; /* 안쪽 여백 */
+            border-radius: 25px; /* 둥근 모서리 */
+            font-size: 1rem; /* 글씨 크기 */
+            cursor: pointer; /* 마우스 포인터 모양 */
+            display: block; /* 블록 요소로 */
+            margin: 0 auto; /* 가운데 정렬 */
+            transition: background-color 0.3s ease; /* 부드러운 색상 변화 */
+        }
+
+        .modal-close-btn:hover {
+            background-color: #041f42; /* 마우스 올리면 더 진한 파란색 */
+        }
+
+        /* 태블릿 화면 (768px 이하) */
+        @media (max-width: 768px) {
+            .ceo-container {
+                padding: 40px 15px; /* 여백 줄이기 */
+            }
+
+            .ceo-title {
+                font-size: 2rem; /* 글씨 크기 줄이기 */
+            }
+
+            .ceo-subtitle {
+                font-size: 1.2rem; /* 글씨 크기 줄이기 */
+            }
+
+            .ceo-content {
+                flex-direction: column; /* 세로로 배치 */
+                gap: 30px; /* 간격 줄이기 */
+            }
+
+            .ceo-image {
+                flex: none; /* 고정 크기 해제 */
+                align-self: center; /* 가운데 정렬 */
+                max-width: 300px; /* 최대 너비 제한 */
+            }
+
+            .modal-content {
+                margin: 20px; /* 모달 여백 */
+                padding: 30px; /* 안쪽 여백 줄이기 */
+                max-height: 90vh; /* 높이 늘리기 */
+            }
+
+            .modal-title {
+                font-size: 1.5rem; /* 글씨 크기 줄이기 */
+            }
+
+            .modal-text {
+                font-size: 1rem; /* 글씨 크기 줄이기 */
+            }
+        }
+
+        /* 모바일 화면 (480px 이하) */
+        @media (max-width: 480px) {
+            .ceo-container {
+                padding: 30px 10px; /* 여백 더 줄이기 */
+            }
+
+            .ceo-title {
+                font-size: 1.8rem; /* 글씨 크기 더 줄이기 */
+            }
+
+            .ceo-subtitle {
+                font-size: 1.1rem; /* 글씨 크기 더 줄이기 */
+            }
+
+            .ceo-desc {
+                font-size: 0.9rem; /* 글씨 크기 줄이기 */
+            }
+
+            .more-btn {
+                padding: 10px 25px; /* 버튼 크기 줄이기 */
+                font-size: 0.9rem; /* 글씨 크기 줄이기 */
+            }
+
+            .modal-content {
+                margin: 10px; /* 모달 여백 줄이기 */
+                padding: 20px; /* 안쪽 여백 더 줄이기 */
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- CEO 섹션 전체 컨테이너 -->
+    <div class="ceo-container">
+        <!-- 메인 타이틀 -->
+        <h1 class="ceo-title">CEO, 인사말</h1>
+        
+        <!-- 서브 타이틀 -->
+        <h2 class="ceo-subtitle">"소상공인과 자영업 사장님들의 성공, 그것이 저의 사명입니다."</h2>
+        
+        <!-- CEO 콘텐츠 (좌우 배치) -->
+        <div class="ceo-content">
+            <!-- 왼쪽 이미지 영역 -->
+            <div class="ceo-image">
+                <img src="images/man2.jpg" alt="중간계 AI 스튜디오 대표 신병철" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <div style="display:none; padding:20px; background:#f5f5f5; border-radius:15px; text-align:center; color:#666;">
+                    이미지를 불러올 수 없습니다<br>
+                    (images/man2.jpg)
+                </div>
+            </div>
+            
+            <!-- 오른쪽 텍스트 영역 -->
+            <div class="ceo-text">
+                <!-- CEO 인사말 텍스트 -->
+                <p class="ceo-desc">
+                    <!-- 미리보기 텍스트 (처음에 보이는 일부) -->
+                    <span class="preview-text">
+                        안녕하십니까? 저는 지난 35년간 비즈니스와 마케팅 한길을 걸으며, CJ, 배달의민족, 러쉬, 여기어때, 야나두, 일동제약, 커피에 반하다, 단꿈아이 등 수많은 기업과 브랜드에서 경영 자문과 마케팅 전략을 맡아 왔습니다. 특히, 스타트업과 소상공인 사장님들의 빠르고 정확한 의사결정, 현장에 맞는 전략 실행을 지원하며, 현장에서 길어 올린 실전 경험을 쌓아왔습니다.
+                    </span>
+                    
+                    <!-- 숨겨진 텍스트 (더보기 클릭 시 모달에서 보임) -->
+                    <span class="hidden-text">
+                        이제 AI 시대를 맞아, 그동안의 경험과 통찰을 바탕으로 '중간계 AI 스튜디오'라는 새로운 서비스를 시작합니다. 브랜드 기획부터 상세페이지, 쇼츠·릴스, 웹사이트, 그리고 인공지능 기반 챗봇에 이르기까지, 변화하는 시대에 꼭 필요한 실행 솔루션을 제공합니다. AI 기술과 현장 경험이 결합된 실용적이고 감각적인 지원, 그것이 중간계 AI 스튜디오가 드리는 약속입니다. 소상공인과 자영업 사장님들의 더 큰 도전과 성공을 함께하겠습니다. 감사합니다.
+                    </span>
+                </p>
+                
+                <!-- 더보기 버튼 -->
+                <button class="more-btn" onclick="openModal()">더보기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 모달 창 (전체 내용 보기) -->
+    <div class="modal-overlay" id="ceoModal" onclick="closeModalOnBackground(event)">
+        <div class="modal-content">
+            <!-- 모달 닫기 버튼 (X 표시) -->
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+            
+            <!-- 모달 제목 -->
+            <h2 class="modal-title">CEO 인사말</h2>
+            
+            <!-- 모달 내용 텍스트 -->
+            <div class="modal-text">
+                <p>안녕하십니까? 저는 지난 35년간 비즈니스와 마케팅 한길을 걸으며, CJ, 배달의민족, 러쉬, 여기어때, 야나두, 일동제약, 커피에 반하다, 단꿈아이 등 수많은 기업과 브랜드에서 경영 자문과 마케팅 전략을 맡아 왔습니다.</p>
+                
+                <p>특히, 스타트업과 소상공인 사장님들의 빠르고 정확한 의사결정, 현장에 맞는 전략 실행을 지원하며, 현장에서 길어 올린 실전 경험을 쌓아왔습니다.</p>
+                
+                <p>이제 AI 시대를 맞아, 그동안의 경험과 통찰을 바탕으로 '중간계 AI 스튜디오'라는 새로운 서비스를 시작합니다. 브랜드 기획부터 상세페이지, 쇼츠·릴스, 웹사이트, 그리고 인공지능 기반 챗봇에 이르기까지, 변화하는 시대에 꼭 필요한 실행 솔루션을 제공합니다.</p>
+                
+                <p>AI 기술과 현장 경험이 결합된 실용적이고 감각적인 지원, 그것이 중간계 AI 스튜디오가 드리는 약속입니다. 소상공인과 자영업 사장님들의 더 큰 도전과 성공을 함께하겠습니다.</p>
+                
+                <p>감사합니다.</p>
+                
+                <!-- AI가 추가한 3~4줄 설명 -->
+                <p style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #f0f0f0; font-style: italic; color: #555;">
+                    <strong>35년 경험과 AI 기술의 만남:</strong><br>
+                    데이터 기반 의사결정과 인간 중심의 따뜻한 소통을 결합하여, 단순한 기술 제공을 넘어 진정한 비즈니스 파트너가 되겠습니다. 매일 변화하는 디지털 환경에서도 변하지 않는 것은 고객의 성공을 향한 진심입니다. 중간계 AI 스튜디오는 여러분의 꿈과 목표를 현실로 만드는 가장 확실한 동반자가 되겠습니다. 함께 새로운 성공의 역사를 써나가겠습니다.
+                </p>
+                
+                <!-- 서명 -->
+                <div class="signature">
+                    <br>중간계 AI 스튜디오<br>
+                    <strong>대표 신병철</strong>
+                </div>
+            </div>
+            
+            <!-- 모달 하단 닫기 버튼 -->
+            <button class="modal-close-btn" onclick="closeModal()">닫기</button>
+        </div>
+    </div>
+
+    <script>
+        // 모달 열기 함수 (초등학생용 주석: 더보기 버튼을 누르면 실행되는 함수)
+        function openModal() {
+            const modal = document.getElementById('ceoModal'); // 모달 찾기
+            modal.classList.add('show'); // 'show' 클래스 추가해서 보이게 하기
+            document.body.style.overflow = 'hidden'; // 페이지 스크롤 막기
+            console.log('CEO 인사말 모달이 열렸습니다'); // 개발자 도구에 메시지 출력
+        }
+
+        // 모달 닫기 함수 (초등학생용 주석: 모달을 닫는 함수)
+        function closeModal() {
+            const modal = document.getElementById('ceoModal'); // 모달 찾기
+            modal.classList.remove('show'); // 'show' 클래스 제거해서 안 보이게 하기
+            document.body.style.overflow = 'auto'; // 페이지 스크롤 다시 허용
+            console.log('CEO 인사말 모달이 닫혔습니다'); // 개발자 도구에 메시지 출력
+        }
+
+        // 배경 클릭으로 모달 닫기 (초등학생용 주석: 모달 바깥쪽을 클릭하면 닫히게 하는 함수)
+        function closeModalOnBackground(event) {
+            // 클릭한 곳이 모달 배경인지 확인
+            if (event.target === event.currentTarget) {
+                closeModal(); // 모달 닫기
+            }
+        }
+
+        // ESC 키로 모달 닫기 (초등학생용 주석: 키보드의 ESC 키를 누르면 모달이 닫히게 하는 기능)
+        document.addEventListener('keydown', function(event) {
+            // ESC 키가 눌렸는지 확인
+            if (event.key === 'Escape') {
+                const modal = document.getElementById('ceoModal'); // 모달 찾기
+                // 모달이 열려있으면 닫기
+                if (modal.classList.contains('show')) {
+                    closeModal(); // 모달 닫기
+                }
+            }
+        });
+
+        // 페이지 로딩 완료 시 실행 (초등학생용 주석: 웹페이지가 다 로딩되면 실행되는 함수)
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('CEO 인사말 페이지가 로딩되었습니다'); // 개발자 도구에 메시지 출력
+            
+            // 이미지 로딩 에러 처리 (초등학생용 주석: 이미지가 안 보이면 대신 텍스트 보여주기)
+            const images = document.querySelectorAll('img'); // 모든 이미지 찾기
+            images.forEach(function(img) {
+                img.addEventListener('error', function() {
+                    console.log('이미지 로딩 실패:', img.src); // 어떤 이미지가 안 되는지 알려주기
+                });
+            });
+        });
+    </script>
+</body>
+</html>

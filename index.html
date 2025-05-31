@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>중간계 AI 스튜디오</title>
+    
+    <!-- 외부 폰트 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- PWA 설정 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#052f5d">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="중간계 AI 스튜디오">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="logo.png">
+    <link rel="shortcut icon" href="logo.png">
+    
+    <!-- 메인 스타일시트 -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- 헤더 영역 -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-left">
+                <img src="images/logo1.png" alt="중간계AI 스튜디오 로고" class="logo">
+                <div class="brand-name">중간계AI 스튜디오</div>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="#products" class="nav-item">제품</a>
+                <a href="#brand" class="nav-item">브랜드</a>
+                <a href="#reviews" class="nav-item">고객후기</a>
+                <a href="#philosophy" class="nav-item">기업철학</a>
+                <a href="#greeting" class="nav-item">인사말</a>
+                <a href="#qna" class="nav-item">Q&A</a>
+            </nav>
+
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <a href="login.html" class="login-btn">로그인</a>
+                <a href="admin.html" class="admin-btn" style="margin-left: 10px; padding: 8px 15px; background: #e74c3c; color: white; text-decoration: none; border-radius: 6px; font-size: 0.9rem;">관리자</a>
+                
+                <div class="mobile-menu-btn" onclick="toggleMobileMenu()">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+        </div>
+
+        <nav class="mobile-nav" id="mobileNav">
+            <a href="#products" class="mobile-nav-item" onclick="closeMobileMenu()">제품</a>
+            <a href="#brand" class="mobile-nav-item" onclick="closeMobileMenu()">브랜드</a>
+            <a href="#reviews" class="mobile-nav-item" onclick="closeMobileMenu()">고객후기</a>
+            <a href="#philosophy" class="mobile-nav-item" onclick="closeMobileMenu()">기업철학</a>
+            <a href="#greeting" class="mobile-nav-item" onclick="closeMobileMenu()">인사말</a>
+            <a href="#qna" class="mobile-nav-item" onclick="closeMobileMenu()">Q&A</a>
+        </nav>
+    </header>
+
+    <!-- 히어로 섹션 -->
+    <section class="hero-section">
+        <div class="hero-slider">
+            <div class="hero-slide active">
+                <div class="hero-content">
+                    <h1 class="hero-brand">중간계 AI 스튜디오</h1>
+                    <h2 class="hero-slogan">당신의 아이디어, 브랜드가 되다</h2>
+                    <p class="hero-desc">브랜드 이름에서부터 웹사이트까지, 사업성공을 함께 합니다</p>
+                    <a href="#reservation" class="hero-button">예약하기</a>
+                </div>
+            </div>
+
+            <div class="hero-slide">
+                <div class="hero-content">
+                    <h1 class="hero-brand">중간계 AI 스튜디오</h1>
+                    <h2 class="hero-slogan">쉽고 빠르게, 원하는 것을 구축하다</h2>
+                    <p class="hero-desc">아이디어에서 실현까지 중간계 AI가 함께합니다</p>
+                    <a href="#reservation" class="hero-button">예약하기</a>
+                </div>
+            </div>
+
+            <div class="hero-slide">
+                <div class="hero-content">
+                    <h1 class="hero-brand">중간계 AI 스튜디오</h1>
+                    <h2 class="hero-slogan">상상력에 날개를, 날아 오르다</h2>
+                    <p class="hero-desc">꿈이 아니라, 현실이 될 것입니다</p>
+                    <a href="#reservation" class="hero-button">예약하기</a>
+                </div>
+            </div>
+        </div>
+
+        <button class="hero-arrow left" onclick="previousSlide()">&#8249;</button>
+        <button class="hero-arrow right" onclick="nextSlide()">&#8250;</button>
+
+        <div class="hero-indicators">
+            <div class="hero-indicator active" onclick="goToSlide(0)"></div>
+            <div class="hero-indicator" onclick="goToSlide(1)"></div>
+            <div class="hero-indicator" onclick="goToSlide(2)"></div>
+        </div>
+    </section>
+
+    <!-- 제품 섹션 -->
+    <section id="products" class="product-container">
+        <img src="images/shop1.jpg" alt="중간계 AI 스튜디오 매장" class="shop-image">
+        
+        <h1 class="product-title">중간계 AI 스튜디오 4가지 상품</h1>
+        
+        <div class="products-grid">
+            <div class="product-card">
+                <img src="images/pd1.jpg" alt="AI 상세페이지" class="product-image">
+                <div class="product-content">
+                    <h2>AI 상세페이지</h2>
+                    <p>AI,인공지능 추천에 최적화된 상세페이지<br><br>
+                    고객의 구매 패턴을 분석하여 개인 맞춤형 상품을 추천합니다.<br>
+                    전환율을 최대 300% 향상시키는 스마트 레이아웃을 제공합니다.</p>
+                </div>
+            </div>
+            
+            <div class="product-card">
+                <img src="images/pd2.jpg" alt="AI 최적화 쇼츠릴스" class="product-image">
+                <div class="product-content">
+                    <h2>AI 최적화 쇼츠릴스</h2>
+                    <p>AI,인공지능 추천에 최적화된 쇼츠, 릴스<br><br>
+                    바이럴 알고리즘을 분석하여 최적의 콘텐츠 타이밍을 제안합니다.<br>
+                    트렌드 키워드와 해시태그를 자동으로 추천하여 노출도를 극대화합니다.</p>
+                </div>
+            </div>
+            
+            <div class="product-card">
+                <img src="images/pd3.jpg" alt="AI 반응형 홈페이지" class="product-image">
+                <div class="product-content">
+                    <h2>AI 반응형 홈페이지</h2>
+                    <p>AI, 추천에 최적화된 홈페이지<br><br>
+                    사용자 행동 패턴을 실시간으로 분석하여 개인화된 콘텐츠를 제공합니다.<br>
+                    SEO 최적화와 로딩 속도 개선으로 검색 엔진 상위 노출을 보장합니다.</p>
+                </div>
+            </div>
+            
+            <div class="product-card">
+                <img src="images/pd4.jpg" alt="AI 챗봇" class="product-image">
+                <div class="product-content">
+                    <h2>AI 챗봇</h2>
+                    <p>현존 최고수준의 브랜드 AI 챗봇<br><br>
+                    24시간 무중단 고객 상담으로 언제든지 완벽한 서비스를 제공합니다.<br>
+                    자연어 처리 기술로 사람과 구분되지 않는 자연스러운 대화가 가능합니다.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="purchase-section">
+            <a href="https://smartstore.naver.com/" target="_blank" class="purchase-btn">구매하기</a>
+        </div>
+    </section>
+
+    <!-- 고객 후기 섹션 -->
+    <section id="reviews" class="review-container">
+        <h1 class="review-title">고객 후기</h1>
+        <p class="review-subtitle">중간계 AI 스튜디오와 함께한 자영업, 소상공인 사장님들의 생생한 후기입니다</p>
+        
+        <div class="reviews-grid">
+            <div class="review-card">
+                <div class="review-stars">
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                </div>
+                <p class="review-text">
+                    AI 상세페이지 덕분에 온라인 주문이 3배나 늘었어요!<br>
+                    고객들이 메뉴를 더 쉽게 찾고 주문하게 되었습니다.
+                </p>
+                <div class="reviewer-info">
+                    <div class="reviewer-name">김민수 사장님</div>
+                    <div class="reviewer-business">카페 운영</div>
+                </div>
+            </div>
+
+            <div class="review-card">
+                <div class="review-stars">
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                </div>
+                <p class="review-text">
+                    쇼츠 영상 제작 후 젊은 고객들이 많이 늘었어요.<br>
+                    인스타그램과 틱톡에서 우리 가게가 유명해졌습니다.
+                </p>
+                <div class="reviewer-info">
+                    <div class="reviewer-name">박영희 사장님</div>
+                    <div class="reviewer-business">치킨집 운영</div>
+                </div>
+            </div>
+
+            <div class="review-card">
+                <div class="review-stars">
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                </div>
+                <p class="review-text">
+                    반응형 홈페이지로 모바일 고객들이 급증했어요.<br>
+                    꽃 주문이 온라인으로 편리하게 들어옵니다.
+                </p>
+                <div class="reviewer-info">
+                    <div class="reviewer-name">이수진 사장님</div>
+                    <div class="reviewer-business">꽃집 운영</div>
+                </div>
+            </div>
+
+            <div class="review-card">
+                <div class="review-stars">
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                </div>
+                <p class="review-text">
+                    AI 챗봇으로 24시간 예약 접수가 가능해졌어요.<br>
+                    새벽에도 고객들이 예약을 잡을 수 있어서 좋습니다.
+                </p>
+                <div class="reviewer-info">
+                    <div class="reviewer-name">최동훈 사장님</div>
+                    <div class="reviewer-business">미용실 운영</div>
+                </div>
+            </div>
+
+            <div class="review-card">
+                <div class="review-stars">
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                </div>
+                <p class="review-text">
+                    상세페이지 개선 후 배달 주문이 2배로 늘었어요.<br>
+                    메뉴 사진이 더 맛있어 보이게 나와서 좋습니다.
+                </p>
+                <div class="reviewer-info">
+                    <div class="reviewer-name">정미경 사장님</div>
+                    <div class="reviewer-business">분식집 운영</div>
+                </div>
+            </div>
+
+            <div class="review-card">
+                <div class="review-stars">
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                </div>
+                <p class="review-text">
+                    쇼츠 영상으로 우리 옷가게가 핫플레이스가 되었어요.<br>
+                    젊은 고객들이 영상 보고 직접 찾아옵니다.
+                </p>
+                <div class="reviewer-info">
+                    <div class="reviewer-name">한지영 사장님</div>
+                    <div class="reviewer-business">의류매장 운영</div>
+                </div>
+            </div>
+
+            <div class="review-card">
+                <div class="review-stars">
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                </div>
+                <p class="review-text">
+                    반응형 홈페이지로 예약률이 급상승했어요.<br>
+                    모바일에서도 예약이 쉬워져서 고객들이 좋아합니다.
+                </p>
+                <div class="reviewer-info">
+                    <div class="reviewer-name">송태호 사장님</div>
+                    <div class="reviewer-business">펜션 운영</div>
+                </div>
+            </div>
+
+            <div class="review-card">
+                <div class="review-stars">
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                </div>
+                <p class="review-text">
+                    AI 챗봇이 케이크 주문을 자동으로 받아줘서 편해요.<br>
+                    고객들이 언제든지 문의하고 주문할 수 있어 좋습니다.
+                </p>
+                <div class="reviewer-info">
+                    <div class="reviewer-name">윤서연 사장님</div>
+                    <div class="reviewer-business">베이커리 운영</div>
+                </div>
+            </div>
+
+            <div class="review-card">
+                <div class="review-stars">
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                    <span class="star">★</span>
+                </div>
+                <p class="review-text">
+                    종합적인 AI 솔루션으로 매장 운영이 혁신되었어요.<br>
+                    온라인 주문부터 고객 상담까지 모든 게 자동화되었습니다.
+                </p>
+                <div class="reviewer-info">
+                    <div class="reviewer-name">강현우 사장님</div>
+                    <div class="reviewer-business">마트 운영</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 브랜드 소개 섹션 -->
+    <section id="brand" class="brand-container">
+        <h1 class="midstudio-title">중간계 AI 스튜디오</h1>
+        <h2 class="midstudio-subtitle">사업 실행의 파트너, 원하는 것을 구현합니다</h2>
+        
+        <div class="content-section">
+            <img src="images/pd2.jpg" alt="AI 최적화 쇼츠릴스" class="brand-image">
+            
+            <div class="text-content">
+                <div class="desc-preview">
+                    <p class="midstudio-desc">
+                        좋은 아이디어가 있다고 해서, 그 자체로 좋은 사업이 되는 것은 아닙니다. 반짝이는 아이디어도 실행으로 이어지지 않으면 사라지고 맙니다. 중간계 AI 스튜디오는 그 간극을 메우는 전략 파트너입니다.<br><br>
+                        우리는 소상공인과 자영업자, 크리에이터와 창업가의 고민을 누구보다 잘 이해합니다.
+                    </p>
+                </div>
+                <button class="more-btn" onclick="openModal()">더보기</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 브랜드 히스토리 섹션 -->
+    <section id="philosophy" class="history-container">
+        <h1 class="history-title">중간계, 브랜드 히스토리</h1>
+        <h2 class="history-subtitle">사업전략을 넘어, 이제는 인공지능 최적화로</h2>
+        
+        <div class="history-content">
+            <div class="history-image">
+                <img src="images/pd2.jpg" alt="중간계 AI 스튜디오 제품 이미지">
+            </div>
+            
+            <div class="history-text">
+                <p class="history-desc">
+                    <span class="preview-text">
+                        중간계는 지난 20여 년간, 5,000여 명 이상의 소상공인과 자영업 사장님들을 만나왔습니다. 현장의 치열함을 이해하고, 그 안에서 살아남고 성장할 수 있도록 비즈니스 전략, 마케팅 전략, 브랜드 전략은 물론 '가두리 패키지', '설득론', '가격론', '이벤트 전략', '리더십론' 등 실질적이고 실행 중심의 콘텐츠를 제공해 왔습니다. 그 결과, 높은 고객 만족도, 뛰어난 성과 창출, 높은 재구매율과 추천율이라는 신뢰를 쌓아왔습니다.
+                    </span>
+                </p>
+                
+                <button class="more-btn" onclick="openHistoryModal()">더보기</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- CEO 인사말 섹션 -->
+    <section id="greeting" class="ceo-container">
+        <h1 class="ceo-title">CEO, 인사말</h1>
+        <h2 class="ceo-subtitle">"소상공인과 자영업 사장님들의 성공, 그것이 저의 사명입니다."</h2>
+        
+        <div class="ceo-content">
+            <div class="ceo-image">
+                <img src="images/man2.jpg" alt="중간계 AI 스튜디오 대표 신병철">
+            </div>
+            
+            <div class="ceo-text">
+                <p class="ceo-desc">
+                    <span class="preview-text">
+                        안녕하십니까? 저는 지난 35년간 비즈니스와 마케팅 한길을 걸으며, CJ, 배달의민족, 러쉬, 여기어때, 야나두, 일동제약, 커피에 반하다, 단꿈아이 등 수많은 기업과 브랜드에서 경영 자문과 마케팅 전략을 맡아 왔습니다. 특히, 스타트업과 소상공인 사장님들의 빠르고 정확한 의사결정, 현장에 맞는 전략 실행을 지원하며, 현장에서 길어 올린 실전 경험을 쌓아왔습니다.
+                    </span>
+                </p>
+                
+                <button class="more-btn" onclick="openCeoModal()">더보기</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Q&A 섹션 -->
+    <section id="qna" class="qna-container">
+        <div class="qna-wrapper">
+            <h2 class="qna-title">Q&A 게시판</h2>
+            <p class="qna-subtitle">궁금한 점이 있으시면 언제든지 문의해주세요</p>
+            
+            <form id="questionForm" class="qna-form">
+                <label for="title">질문 제목:</label>
+                <input type="text" id="title" name="title" required placeholder="질문 제목을 입력해주세요">
+                
+                <label for="question">질문 내용:</label>
+                <textarea id="question" name="question" required placeholder="궁금한 내용을 자세히 적어주세요"></textarea>
+                
+                <button type="submit">질문 등록하기</button>
+            </form>
+            
+            <div class="comments-section">
+                <h3 style="color: #34495e; margin-bottom: 15px; font-size: 1.2rem;">댓글</h3>
+                <div id="commentsList"></div>
+            </div>
+
+            <div class="faq">
+                <h2>자주 묻는 질문 (FAQ)</h2>
+                
+                <div class="faq-item">
+                    <div class="faq-q" onclick="toggleAnswer(1)">Q. 배송은 얼마나 걸리나요?</div>
+                    <div class="faq-a" id="answer1" style="display: none;">A. 일반 배송은 주문 후 2-3일, 익일 배송은 다음 날 오후 6시까지 배송됩니다.</div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-q" onclick="toggleAnswer(2)">Q. 교환이나 환불은 어떻게 하나요?</div>
+                    <div class="faq-a" id="answer2" style="display: none;">A. 상품 수령 후 7일 이내에 고객센터로 연락주시면 교환이나 환불이 가능합니다.</div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-q" onclick="toggleAnswer(3)">Q. 회원가입은 어떻게 하나요?</div>
+                    <div class="faq-a" id="answer3" style="display: none;">A. 홈페이지 상단의 '회원가입' 버튼을 클릭하고, 필요한 정보를 입력하신 후 이메일 인증을 완료하시면 됩니다.</div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-q" onclick="toggleAnswer(4)">Q. AI 상세페이지와 일반 상세페이지의 차이점은 무엇인가요?</div>
+                    <div class="faq-a" id="answer4" style="display: none;">A. AI 상세페이지는 고객 행동 패턴을 분석하여 개인 맞춤형 콘텐츠를 제공하고, 검색 엔진 최적화와 전환율 향상에 특화되어 있습니다. 일반 상세페이지보다 2-3배 높은 성과를 보여줍니다.</div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-q" onclick="toggleAnswer(5)">Q. 포트폴리오나 사례를 볼 수 있나요?</div>
+                    <div class="faq-a" id="answer5" style="display: none;">A. 네, 상담 시 다양한 업종별 포트폴리오와 성과 사례를 보여드립니다. 고객 정보 보호를 위해 일부 정보는 가려서 제공하며, 실제 성과 데이터를 확인하실 수 있습니다.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 푸터 -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="company-info">
+                <div class="company-name">중간계 AI 스튜디오</div>
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <i class="fas fa-phone"></i>
+                        <span>02-123-1234</span>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-envelope"></i>
+                        <span>abc@gmail.com</span>
+                    </div>
+                    <div class="contact-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>서울특별시 강남구 테헤란로 123</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="social-section">
+                <div class="social-links">
+                    <span class="social-title">Follow Us</span>
+                    <a href="#" class="social-btn instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="social-btn facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="social-btn youtube"><i class="fab fa-youtube"></i></a>
+                    <a href="#" class="social-btn blog"><i class="fas fa-blog"></i></a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer-bottom">
+            <div class="copyright">© 2024 중간계 AI 스튜디오. All rights reserved.</div>
+            <div class="footer-subtitle">소상공인과 자영업 사장님들의 성공을 위한 AI 솔루션</div>
+        </div>
+    </footer>
+
+    <!-- 챗봇 링크 버튼 -->
+    <a href="https://chatgpt.com/g/g-68294d4e7d848191b6c0740244f66c93-junggangyeseutyudio-caesbos" target="_blank" class="chatbot-toggle">
+        <i class="fas fa-comment"></i>
+    </a>
+
+    <!-- 브랜드 히스토리 모달 -->
+    <div class="modal-overlay" id="historyModal" onclick="closeModalOnBackground(event, 'historyModal')">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeHistoryModal()">&times;</button>
+            
+            <h2 class="modal-title">중간계, 브랜드 히스토리</h2>
+            
+            <div class="modal-text">
+                <p>중간계는 지난 20여 년간, 5,000여 명 이상의 소상공인과 자영업 사장님들을 만나왔습니다. 현장의 치열함을 이해하고, 그 안에서 살아남고 성장할 수 있도록 비즈니스 전략, 마케팅 전략, 브랜드 전략은 물론 '가두리 패키지', '설득론', '가격론', '이벤트 전략', '리더십론' 등 실질적이고 실행 중심의 콘텐츠를 제공해 왔습니다.</p>
+                
+                <p>그 결과, 높은 고객 만족도, 뛰어난 성과 창출, 높은 재구매율과 추천율이라는 신뢰를 쌓아왔습니다. 이제 중간계는 시대의 흐름에 발맞추어 '중간계 AI 스튜디오'라는 이름으로 다시 도약합니다.</p>
+                
+                <p>앞으로는 인공지능에 최적화된 브랜드 설계와 콘텐츠 제작이 생존과 성장을 가르는 핵심 역량이 됩니다. 우리는 브랜드 상세페이지, 쇼츠·릴스, 홈페이지, 챗봇 등 AI 시대에 적합한 툴을 기반으로, 더 많이 검색되고, 더 쉽게 연결되며, 더 효율적으로 매출로 이어지는 새로운 전략 파트너십을 제안합니다.</p>
+                
+                <p>아이디어와 실행 사이의 간극을 넘어, 이제는 기술과 감각의 간극까지도 메워드립니다. 중간계 AI 스튜디오와 함께, 당신의 브랜드 성공 여정을 시작해보세요.</p>
+                
+                <p style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #f0f0f0; font-style: italic; color: #555;">
+                    <strong>AI 기술의 힘으로 더욱 강력해진 중간계:</strong><br>
+                    머신러닝 기반의 고객 행동 분석을 통해 개인 맞춤형 마케팅 전략을 수립하고, 실시간 데이터 분석으로 시장 트렌드를 예측합니다. 자연어 처리 기술을 활용한 콘텐츠 최적화로 검색 엔진 상위 노출을 보장하며, 딥러닝 알고리즘을 통한 자동화된 A/B 테스트로 최적의 성과를 도출합니다. 20년간 축적된 현장 경험과 최첨단 AI 기술의 완벽한 결합으로, 여러분의 비즈니스를 한 단계 더 높은 차원으로 이끌어드립니다.
+                </p>
+            </div>
+            
+            <button class="modal-close-btn" onclick="closeHistoryModal()">닫기</button>
+        </div>
+    </div>
+
+    <!-- CEO 인사말 모달 -->
+    <div class="modal-overlay" id="ceoModal" onclick="closeModalOnBackground(event, 'ceoModal')">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeCeoModal()">&times;</button>
+            
+            <h2 class="modal-title">CEO 인사말</h2>
+            
+            <div class="modal-text">
+                <p>안녕하십니까? 저는 지난 35년간 비즈니스와 마케팅 한길을 걸으며, CJ, 배달의민족, 러쉬, 여기어때, 야나두, 일동제약, 커피에 반하다, 단꿈아이 등 수많은 기업과 브랜드에서 경영 자문과 마케팅 전략을 맡아 왔습니다.</p>
+                
+                <p>특히, 스타트업과 소상공인 사장님들의 빠르고 정확한 의사결정, 현장에 맞는 전략 실행을 지원하며, 현장에서 길어 올린 실전 경험을 쌓아왔습니다.</p>
+                
+                <p>이제 AI 시대를 맞아, 그동안의 경험과 통찰을 바탕으로 '중간계 AI 스튜디오'라는 새로운 서비스를 시작합니다. 브랜드 기획부터 상세페이지, 쇼츠·릴스, 웹사이트, 그리고 인공지능 기반 챗봇에 이르기까지, 변화하는 시대에 꼭 필요한 실행 솔루션을 제공합니다.</p>
+                
+                <p>AI 기술과 현장 경험이 결합된 실용적이고 감각적인 지원, 그것이 중간계 AI 스튜디오가 드리는 약속입니다. 소상공인과 자영업 사장님들의 더 큰 도전과 성공을 함께하겠습니다.</p>
+                
+                <p>감사합니다.</p>
+                
+                <p style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #f0f0f0; font-style: italic; color: #555;">
+                    <strong>35년 경험과 AI 기술의 만남:</strong><br>
+                    데이터 기반 의사결정과 인간 중심의 따뜻한 소통을 결합하여, 단순한 기술 제공을 넘어 진정한 비즈니스 파트너가 되겠습니다. 매일 변화하는 디지털 환경에서도 변하지 않는 것은 고객의 성공을 향한 진심입니다. 중간계 AI 스튜디오는 여러분의 꿈과 목표를 현실로 만드는 가장 확실한 동반자가 되겠습니다. 함께 새로운 성공의 역사를 써나가겠습니다.
+                </p>
+                
+                <div class="signature">
+                    <br>중간계 AI 스튜디오<br>
+                    <strong>대표 신병철</strong>
+                </div>
+            </div>
+            
+            <button class="modal-close-btn" onclick="closeCeoModal()">닫기</button>
+        </div>
+    </div>
+
+    <!-- 브랜드 소개 모달 -->
+    <div class="modal-overlay" id="brandModal" onclick="closeModalOnBackground(event, 'brandModal')">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeBrandModal()">&times;</button>
+            
+            <h2 class="modal-title">중간계 AI 스튜디오</h2>
+            
+            <div class="modal-text">
+                <p>좋은 아이디어가 있다고 해서, 그 자체로 좋은 사업이 되는 것은 아닙니다. 반짝이는 아이디어도 실행으로 이어지지 않으면 사라지고 맙니다. 중간계 AI 스튜디오는 그 간극을 메우는 전략 파트너입니다.</p>
+                
+                <p>우리는 소상공인과 자영업자, 크리에이터와 창업가의 고민을 누구보다 잘 이해합니다. 매일 변화하는 시장에서 살아남기 위해 무엇이 필요한지, 어떻게 차별화할 수 있는지, 고객의 마음을 어떻게 사로잡을 수 있는지에 대한 실질적인 해답을 제공합니다.</p>
+                
+                <p>브랜드 기획부터 AI 최적화 콘텐츠 제작까지, 우리는 단순한 서비스 제공을 넘어 여러분의 사업 성공을 위한 진정한 파트너가 되겠습니다. 기술의 발전이 빠를수록, 인간적인 소통과 이해는 더욱 중요해집니다.</p>
+                
+                <p>중간계 AI 스튜디오와 함께 여러분의 꿈을 현실로 만들어보세요. 아이디어에서 실행까지, 우리가 함께하겠습니다.</p>
+            </div>
+            
+            <button class="modal-close-btn" onclick="closeBrandModal()">닫기</button>
+        </div>
+    </div>
+
+    <!-- 메인 JavaScript -->
+    <script type="module" src="script.js"></script>
+</body>
+</html>
