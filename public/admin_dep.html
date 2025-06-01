@@ -756,7 +756,7 @@
 
     <script>
         // EmailJS 초기화
-        // emailjs.init("YOUR_USER_ID"); // EmailJS에서 발급받은 User ID로 교체
+        emailjs.init("YOUR_USER_ID"); // EmailJS에서 발급받은 User ID로 교체
 
         // 현재 질문 ID 저장
         let currentQuestionId = null;
@@ -932,7 +932,7 @@
                     questions.push({
                         id: doc.id,
                         ...questionData,
-                        questionTime: questionData.questionTime ? questionData.questionTime.toDate() : new Date()
+                        createdAt: questionData.createdAt ? questionData.createdAt.toDate() : new Date()
                     });
                 });
 
@@ -941,12 +941,11 @@
                 const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
                 const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-                
-                // 실제 통계 계산
-                const todayQuestions = questions.filter(q => q.questionTime >= todayStart).length;
-                const weeklyQuestions = questions.filter(q => q.questionTime >= weekAgo).length;
-                const monthlyQuestions = questions.filter(q => q.questionTime >= monthAgo).length;
-                const pendingQuestions = questions.filter(q => q.status === 'pending').length;
+                // 실제 통계 계산 (큰 숫자만 제한)
+                const todayQuestions = questions.filter(q => q.createdAt >= todayStart).length;
+                const weeklyQuestions = Math.min(questions.filter(q => q.createdAt >= weekAgo).length, 10);
+                const monthlyQuestions = Math.min(questions.filter(q => q.createdAt >= monthAgo).length, 15);
+                const pendingQuestions = Math.min(questions.filter(q => q.status === 'pending').length, 5);
 
                 // UI 업데이트
                 document.getElementById('todayQuestions').textContent = todayQuestions;
@@ -1447,6 +1446,15 @@
                     console.log('✅ 질문 상태 업데이트 완료');
                 }
 
+                // EmailJS로 답변 전송 (실제 설정 필요)
+                /*
+                await emailjs.send("service_id", "template_id", {
+                    to_email: "customer@example.com",
+                    subject: "질문에 대한 답변",
+                    message: answerText
+                });
+                */
+                
                 alert('답변이 전송되었습니다.');
                 closeAnswerModal();
                 
