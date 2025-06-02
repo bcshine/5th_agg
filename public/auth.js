@@ -15,17 +15,8 @@ import {
     getDoc 
 } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
-// Firebase 설정
-const firebaseConfig = {
-    apiKey: "AIzaSyDjLGVPUFy2sAVjfys_FEbITu2Dq7VNDKM",
-    authDomain: "mid-ai-5th.firebaseapp.com",
-    projectId: "mid-ai-5th",
-    storageBucket: "mid-ai-5th.firebasestorage.app",
-    messagingSenderId: "2959931709",
-    appId: "1:2959931709:web:2e4c0e1bf8ff3121a46d54",
-    measurementId: "G-ZVZKJWY7S5",
-    databaseURL: "https://mid-ai-5th-default-rtdb.firebaseio.com"
-};
+// Firebase 설정을 별도 파일에서 import
+import { firebaseConfig } from './firebase-config.js';
 
 // Firebase 초기화
 const app = initializeApp(firebaseConfig);

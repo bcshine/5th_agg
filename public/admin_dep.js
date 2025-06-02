@@ -3,15 +3,8 @@
 // Firebase는 HTML에서 모듈로 로드됨
 let app, auth, db, firebaseModules;
 
-// Firebase 설정 (HTML에서 초기화된 것 사용)
-const firebaseConfig = {
-    apiKey: "AIzaSyDYJpJsOABHy8YhWnFtSbCv6iqRz-gYrKA",
-    authDomain: "mid-ai-5th.firebaseapp.com",
-    projectId: "mid-ai-5th",
-    storageBucket: "mid-ai-5th.firebasestorage.app",
-    messagingSenderId: "123456789012",
-    appId: "1:123456789012:web:abcdef1234567890"
-};
+// Firebase 설정을 별도 파일에서 import (보안상 중요!)
+import { firebaseConfig } from './firebase-config.js';
 
 // Firebase 초기화 확인 및 설정
 function initializeFirebase() {
