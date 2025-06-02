@@ -2651,4 +2651,166 @@ input:checked + .toggle-slider:before {
     .question-summary .question-date {
         margin: 0;
     }
+}
+
+/* 배지 스타일 확장 */
+.badge-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.badge-primary {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+}
+
+.badge-danger {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+}
+
+/* 버튼 스타일 확장 */
+.btn-danger {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+    border: 1px solid #dc3545;
+    margin-left: 5px;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #c82333, #a71e2a);
+    border-color: #c82333;
+    transform: translateY(-1px);
+}
+
+/* 폼 그룹 스타일 */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-group select,
+.form-group input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    background: white;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+/* 관리자 테이블 스타일 */
+.admin-actions {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.admin-actions .btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    min-width: auto;
+}
+
+/* 로딩 스타일 */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading i {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    opacity: 0.7;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 빈 상태 스타일 */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    opacity: 0.3;
+}
+
+.empty-state h3 {
+    margin: 15px 0 10px;
+    color: #333;
+}
+
+.empty-state p {
+    margin-bottom: 20px;
+    opacity: 0.7;
+}
+
+/* 모달 개선 */
+.modal-content {
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-body {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* 정보 박스 스타일 */
+.info-box {
+    margin-top: 15px;
+    padding: 12px;
+    background: #e3f2fd;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #1976d2;
+    border: 1px solid #bbdefb;
+}
+
+.info-box i {
+    margin-right: 5px;
+}
+
+.info-box strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+/* 관리자 권한 표시 스타일 */
+.role-super {
+    background: linear-gradient(135deg, #ff6b6b, #ff5252);
+    color: white;
+}
+
+.role-admin {
+    background: linear-gradient(135deg, #4ecdc4, #26a69a);
+    color: white;
+}
+
+.role-limited {
+    background: linear-gradient(135deg, #ffa726, #ff9800);
+    color: white;
 } 

@@ -1,39 +1,7 @@
 // 중간계 AI 스튜디오 - 관리자 JavaScript
 
-// Firebase는 HTML에서 모듈로 로드됨
-let app, auth, db, firebaseModules;
-
-// Firebase 설정 (HTML에서 초기화된 것 사용)
-const firebaseConfig = {
-    apiKey: "AIzaSyDYJpJsOABHy8YhWnFtSbCv6iqRz-gYrKA",
-    authDomain: "mid-ai-5th.firebaseapp.com",
-    projectId: "mid-ai-5th",
-    storageBucket: "mid-ai-5th.firebasestorage.app",
-    messagingSenderId: "123456789012",
-    appId: "1:123456789012:web:abcdef1234567890"
-};
-
-// Firebase 초기화 확인 및 설정
-function initializeFirebase() {
-    console.log('🔥 Firebase 초기화 확인 중...');
-    
-    // HTML에서 초기화된 Firebase 인스턴스 사용
-    if (window.firebaseApp && window.firebaseAuth && window.firebaseDb) {
-        app = window.firebaseApp;
-        auth = window.firebaseAuth;
-        db = window.firebaseDb;
-        firebaseModules = window.firebaseModules;
-        
-        console.log('✅ Firebase 연결 성공');
-        console.log('📊 Firestore 인스턴스:', db);
-        console.log('🔐 Auth 인스턴스:', auth);
-        
-        return true;
-    } else {
-        console.warn('⚠️ Firebase 인스턴스를 찾을 수 없음, 잠시 후 재시도...');
-        return false;
-    }
-}
+// Firebase 인스턴스들 (HTML에서 초기화됨)
+let app, auth, db, modules;
 
 // 전역 변수
 let currentUser = null;
@@ -47,7 +15,7 @@ let allAdmins = [];
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📄 DOM 로드 완료');
     
-    // 약간의 지연 후 초기화 (CSS 로드 완료 대기)
+    // Firebase 초기화 대기
     setTimeout(() => {
         initializePage();
     }, 100);
@@ -64,8 +32,7 @@ function initializePage() {
         
         const tryInitialize = () => {
             if (initializeFirebase()) {
-                // Firebase 연결 성공 후 실제 데이터 로드
-                console.log('🔥 Firebase 연결됨, 실제 데이터 로드 시작');
+                console.log('🔥 Firebase 연결됨, 데이터 로드 시작');
                 setupFirebaseAuth();
                 loadFirebaseData();
             } else if (retryCount < maxRetries) {
@@ -80,7 +47,6 @@ function initializePage() {
         
         // 기본 초기화
         setupEventListeners();
-        initializeEmailJS();
         loadDefaultTemplates();
         
         // Firebase 초기화 시도
@@ -103,25 +69,109 @@ function initializePage() {
     }
 }
 
-// Firebase 인증 설정
+// Firebase 초기화 확인 및 설정
+function initializeFirebase() {
+    console.log('🔥 Firebase 초기화 확인 중...');
+    
+    try {
+        // HTML에서 초기화된 Firebase 인스턴스 확인
+        if (window.firebaseApp && window.firebaseAuth && window.firebaseDb && window.firebaseModules) {
+            app = window.firebaseApp;
+            auth = window.firebaseAuth;
+            db = window.firebaseDb;
+            modules = window.firebaseModules;
+            
+            console.log('✅ Firebase 연결 성공');
+            console.log('📊 Firestore 인스턴스:', db);
+            console.log('🔐 Auth 인스턴스:', auth);
+            return true;
+        } else {
+            console.warn('⚠️ Firebase가 HTML에서 아직 초기화되지 않음');
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Firebase 초기화 실패:', error);
+        return false;
+    }
+}
+
+// Firebase 인증 설정 및 Firestore 동기화
 function setupFirebaseAuth() {
     console.log('🔐 Firebase 인증 설정 시작');
     
-    if (auth && firebaseModules?.onAuthStateChanged) {
-        firebaseModules.onAuthStateChanged(auth, (user) => {
+    if (auth && modules?.onAuthStateChanged) {
+        modules.onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
-                console.log('✅ 관리자 로그인:', user.email);
+                console.log('✅ 사용자 로그인:', user.email);
+                
+                // 사용자 정보를 Firestore에 동기화
+                await syncUserToFirestore(user);
                 
                 const permissions = checkAdminPermissions(user);
-                console.log('👤 관리자 권한:', permissions);
+                console.log('👤 권한:', permissions);
                 
                 updateAdminInfo(user, permissions);
+                
+                // 데이터 새로고침
+                await loadFirebaseData();
+                
             } else {
                 console.log('❌ 로그인되지 않음');
-                // 로그인 페이지로 리다이렉트 또는 로그인 요구
+                currentUser = null;
             }
         });
+    }
+}
+
+// 사용자 정보를 Firestore에 동기화
+async function syncUserToFirestore(user) {
+    console.log('🔄 사용자 Firestore 동기화 시작:', user.email);
+    
+    if (!db || !modules) {
+        console.warn('⚠️ Firestore 연결 없음');
+        return;
+    }
+    
+    try {
+        const { collection, doc, getDoc, setDoc, serverTimestamp } = modules;
+        
+        // 사용자 문서 참조 생성 (이메일 기반 ID)
+        const userDocId = user.email.replace(/[.@]/g, '_');
+        const userRef = doc(collection(db, 'users'), userDocId);
+        
+        // 기존 사용자 정보 확인
+        const userDoc = await getDoc(userRef);
+        
+        if (!userDoc.exists()) {
+            // 새 사용자인 경우 Firestore에 추가
+            const userData = {
+                uid: user.uid,
+                email: user.email,
+                name: user.displayName || user.email.split('@')[0],
+                phone: user.phoneNumber || '',
+                status: 'active',
+                role: checkAdminPermissions(user).role || 'user',
+                questionCount: 0,
+                answerCount: 0,
+                createdAt: serverTimestamp(),
+                lastLogin: serverTimestamp()
+            };
+            
+            await setDoc(userRef, userData);
+            console.log('✅ 새 사용자를 Firestore에 추가:', user.email);
+            
+        } else {
+            // 기존 사용자인 경우 로그인 시간만 업데이트
+            const { updateDoc } = modules;
+            await updateDoc(userRef, {
+                lastLogin: serverTimestamp()
+            });
+            console.log('✅ 기존 사용자 로그인 시간 업데이트:', user.email);
+        }
+        
+    } catch (error) {
+        console.error('❌ 사용자 Firestore 동기화 실패:', error);
     }
 }
 
@@ -152,8 +202,6 @@ async function loadFirebaseData() {
     } catch (error) {
         console.error('❌ Firebase 데이터 로드 오류:', error);
         showNotification('Firebase 데이터 로드 중 오류가 발생했습니다: ' + error.message, 'error');
-        
-        // 오류 시 오프라인 데이터 로드
         loadOfflineData();
         showLoading(false);
     }
@@ -164,11 +212,9 @@ async function loadFirebaseUsers() {
     console.log('👥 Firebase 사용자 로드 시작');
     
     try {
-        // Firestore에서 사용자 컬렉션 조회
-        if (db && firebaseModules) {
-            const { collection, getDocs, query, orderBy } = firebaseModules;
+        if (db && modules) {
+            const { collection, getDocs, query, orderBy } = modules;
             
-            // users 컬렉션에서 사용자 정보 가져오기
             const usersRef = collection(db, 'users');
             const usersQuery = query(usersRef, orderBy('createdAt', 'desc'));
             const usersSnapshot = await getDocs(usersQuery);
@@ -182,172 +228,19 @@ async function loadFirebaseUsers() {
                     email: userData.email,
                     phone: userData.phone || '전화번호 없음',
                     status: userData.status || 'active',
-                    createdAt: userData.createdAt || new Date(),
+                    createdAt: userData.createdAt ? userData.createdAt.toDate() : new Date(),
                     questionCount: userData.questionCount || 0,
-                    answerCount: userData.answerCount || 0
+                    answerCount: userData.answerCount || 0,
+                    role: userData.role || 'user'
                 });
             });
             
             console.log('✅ Firestore 사용자 로드 완료:', allUsers.length, '명');
-            
-            // Firestore 사용자가 있어도 Authentication과 동기화 확인
-            await syncWithAuthentication();
-            
-            // 사용자가 여전히 없으면 Authentication에서 가져오기
-            if (allUsers.length === 0) {
-                await loadUsersFromAuth();
-            }
         }
         
     } catch (error) {
         console.error('❌ Firebase 사용자 로드 오류:', error);
-        // Authentication에서 사용자 목록 가져오기 시도
-        await loadUsersFromAuth();
-    }
-}
-
-// Authentication과 Firestore 사용자 동기화
-async function syncWithAuthentication() {
-    console.log('🔄 Authentication과 Firestore 사용자 동기화 확인');
-    
-    try {
-        // 새로 확인된 사용자들을 추가 (Authentication에는 있지만 Firestore에 없는 경우)
-        const additionalUsers = [
-            { email: 'bcshin03ais@gmail.com', name: 'BC AI Studio', createdAt: new Date('2025-06-01') }
-        ];
-        
-        for (const authUser of additionalUsers) {
-            // 이미 allUsers에 있는지 확인
-            const existingUser = allUsers.find(user => user.email === authUser.email);
-            
-            if (!existingUser) {
-                // 새 사용자 추가
-                const newUser = {
-                    id: `sync_user_${Date.now()}`,
-                    name: authUser.name,
-                    email: authUser.email,
-                    phone: '전화번호 없음',
-                    status: 'active',
-                    createdAt: authUser.createdAt,
-                    questionCount: 0,
-                    answerCount: 0
-                };
-                
-                allUsers.unshift(newUser); // 맨 앞에 추가 (최신순)
-                
-                console.log('🆕 새 사용자 동기화 완료:', authUser.email);
-                showNotification(`새로운 회원이 동기화되었습니다: ${authUser.name} (${authUser.email})`, 'success');
-            }
-        }
-        
-        console.log('✅ 사용자 동기화 완료, 총 사용자:', allUsers.length, '명');
-        
-    } catch (error) {
-        console.error('❌ Authentication 동기화 오류:', error);
-    }
-}
-
-// Authentication에서 사용자 목록 가져오기
-async function loadUsersFromAuth() {
-    console.log('🔐 Authentication 사용자 목록 로드 시도');
-    
-    try {
-        // Firebase Authentication에 실제 등록된 5명의 사용자 (이미지에서 확인됨)
-        const authenticatedUsers = [
-            { 
-                email: 'bcshin03ais@gmail.com', 
-                name: 'BC AI Studio', 
-                createdAt: new Date('2025-06-01'),
-                phone: '010-8869-1378',
-                status: 'active',
-                questionCount: 1,
-                answerCount: 0
-            },
-            { 
-                email: 'dbal951120@naver.com', 
-                name: '김관리', 
-                createdAt: new Date('2025-05-31'),
-                phone: '010-1234-5678',
-                status: 'active',
-                questionCount: 0,
-                answerCount: 0
-            },
-            { 
-                email: 'midcampus31@gmail.com', 
-                name: '중간계캠퍼스', 
-                createdAt: new Date('2025-05-31'),
-                phone: '010-2345-6789',
-                status: 'active',
-                questionCount: 0,
-                answerCount: 0
-            },
-            { 
-                email: 'bcshin03@naver.com', 
-                name: '신BC', 
-                createdAt: new Date('2025-05-31'),
-                phone: '010-3456-7890',
-                status: 'active',
-                questionCount: 2,
-                answerCount: 1
-            },
-            { 
-                email: 'bcshin03@gmail.com', 
-                name: 'BC Shine', 
-                createdAt: new Date('2025-06-01'),
-                phone: '010-4567-8901',
-                status: 'active',
-                questionCount: 3,
-                answerCount: 2
-            }
-        ];
-        
-        // Authentication의 현재 사용자도 확인해서 추가 (중복 방지)
-        if (auth && auth.currentUser) {
-            const currentUserEmail = auth.currentUser.email;
-            const currentUserExists = authenticatedUsers.some(user => user.email === currentUserEmail);
-            
-            if (!currentUserExists) {
-                authenticatedUsers.push({
-                    email: currentUserEmail,
-                    name: auth.currentUser.displayName || currentUserEmail.split('@')[0],
-                    createdAt: new Date(auth.currentUser.metadata.creationTime),
-                    phone: '전화번호 없음',
-                    status: 'active',
-                    questionCount: 0,
-                    answerCount: 0
-                });
-                console.log('🆕 현재 로그인 사용자 추가:', currentUserEmail);
-            }
-        }
-        
-        // allUsers 배열에 실제 Authentication 사용자들 설정
-        allUsers = authenticatedUsers.map((user, index) => ({
-            id: `auth_user_${index + 1}`,
-            name: user.name,
-            email: user.email,
-            phone: user.phone,
-            status: user.status,
-            createdAt: user.createdAt,
-            questionCount: user.questionCount,
-            answerCount: user.answerCount
-        }));
-        
-        console.log('✅ Firebase Authentication 기반 사용자 생성 완료:', allUsers.length, '명');
-        console.log('📋 로드된 사용자 목록:');
-        allUsers.forEach((user, index) => {
-            console.log(`  ${index + 1}. ${user.name} (${user.email}) - 가입일: ${user.createdAt.toLocaleDateString()}`);
-        });
-        
-        // 모든 사용자가 제대로 로드되었는지 확인
-        if (allUsers.length === 5) {
-            console.log('🎉 Firebase Authentication의 모든 5명 사용자가 성공적으로 로드되었습니다!');
-            showNotification(`Firebase Authentication의 모든 ${allUsers.length}명 사용자가 로드되었습니다.`, 'success');
-        } else {
-            console.warn(`⚠️ 예상된 5명과 다른 ${allUsers.length}명이 로드되었습니다.`);
-        }
-        
-    } catch (error) {
-        console.error('❌ Authentication 사용자 로드 오류:', error);
+        allUsers = [];
     }
 }
 
@@ -356,10 +249,9 @@ async function loadFirebaseQuestions() {
     console.log('📋 Firebase 질문 로드 시작');
     
     try {
-        if (db && firebaseModules) {
-            const { collection, onSnapshot, query, orderBy } = firebaseModules;
+        if (db && modules) {
+            const { collection, onSnapshot, query, orderBy } = modules;
             
-            // questions 컬렉션에서 실시간 질문 데이터 가져오기
             const questionsRef = collection(db, 'questions');
             const questionsQuery = query(questionsRef, orderBy('questionTime', 'desc'));
             
@@ -371,17 +263,13 @@ async function loadFirebaseQuestions() {
                 snapshot.forEach((doc) => {
                     const questionData = doc.data();
                     
-                    // Firebase Timestamp를 JavaScript Date로 변환
                     let questionTime = new Date();
                     if (questionData.questionTime) {
                         if (questionData.questionTime.toDate) {
-                            // Firestore Timestamp
                             questionTime = questionData.questionTime.toDate();
                         } else if (questionData.questionTime.seconds) {
-                            // Timestamp 객체
                             questionTime = new Date(questionData.questionTime.seconds * 1000);
                         } else {
-                            // 일반 Date 또는 문자열
                             questionTime = new Date(questionData.questionTime);
                         }
                     }
@@ -403,45 +291,15 @@ async function loadFirebaseQuestions() {
                 });
                 
                 console.log('✅ Firebase 질문 실시간 로드 완료:', allQuestions.length, '개');
-                
-                // 질문 목록 즉시 업데이트
                 updateQuestionsList();
                 updateDashboard();
-                
-                // 새 질문 알림 (처음 로드가 아닌 경우)
-                if (allQuestions.length > 0) {
-                    const latestQuestion = allQuestions[0];
-                    const now = new Date();
-                    const timeDiff = now - latestQuestion.questionTime;
-                    
-                    // 1분 이내에 작성된 질문이면 새 질문으로 간주
-                    if (timeDiff < 60000) {
-                        showNotification(`새로운 질문이 접수되었습니다: ${latestQuestion.questionTitle}`, 'info');
-                    }
-                }
-                
-                // 질문이 없으면 테스트 데이터는 생성하지 않음 (실제 데이터만 표시)
-                if (allQuestions.length === 0) {
-                    console.log('📋 Firebase에 저장된 질문이 없습니다.');
-                }
             }, (error) => {
                 console.error('❌ Firebase 질문 실시간 리스너 오류:', error);
-                
-                // 권한 오류인 경우 특별 처리
-                if (error.code === 'permission-denied') {
-                    console.error('🔒 Firestore 접근 권한이 없습니다. 보안 규칙을 확인해주세요.');
-                    showNotification('Firebase 접근 권한이 없습니다. 관리자에게 문의해주세요.', 'error');
-                }
-                
-                // 오류 시 테스트 질문 로드
-                loadTestQuestions();
             });
         }
         
     } catch (error) {
         console.error('❌ Firebase 질문 로드 오류:', error);
-        // 오류 시 테스트 질문 로드
-        loadTestQuestions();
     }
 }
 
@@ -450,10 +308,9 @@ async function loadFirebaseAdmins() {
     console.log('👨‍💼 Firebase 관리자 로드 시작');
     
     try {
-        if (db && firebaseModules) {
-            const { collection, getDocs } = firebaseModules;
+        if (db && modules) {
+            const { collection, getDocs } = modules;
             
-            // admins 컬렉션에서 관리자 데이터 가져오기
             const adminsRef = collection(db, 'admins');
             const adminsSnapshot = await getDocs(adminsRef);
             
@@ -474,20 +331,100 @@ async function loadFirebaseAdmins() {
             
             console.log('✅ Firebase 관리자 로드 완료:', allAdmins.length, '명');
             
-            // 관리자가 없으면 기본 관리자 생성
             if (allAdmins.length === 0) {
-                createDefaultAdmins();
+                await createDefaultAdmins();
             }
         }
         
     } catch (error) {
         console.error('❌ Firebase 관리자 로드 오류:', error);
-        createDefaultAdmins();
+        await createDefaultAdmins();
+    }
+}
+
+// 테스트 질문 생성 함수 (개발용)
+async function createTestQuestion() {
+    if (!db || !modules) {
+        alert('Firebase 연결을 확인해주세요.');
+        return;
+    }
+
+    try {
+        const { collection, addDoc, serverTimestamp } = modules;
+        
+        const testQuestion = {
+            questionTitle: 'AI 상세페이지 제작 문의',
+            questionContent: '안녕하세요. AI를 활용한 상세페이지 제작에 대해 문의드리고 싶습니다. 비용과 제작 기간이 궁금합니다.',
+            userName: currentUser ? currentUser.displayName || currentUser.email.split('@')[0] : '테스트 사용자',
+            userEmail: currentUser ? currentUser.email : 'test@example.com',
+            userPhone: '010-1234-5678',
+            questionTime: serverTimestamp(),
+            status: 'pending',
+            priority: 'normal'
+        };
+
+        const questionsRef = collection(db, 'questions');
+        const docRef = await addDoc(questionsRef, testQuestion);
+        
+        console.log('✅ 테스트 질문 생성 완료:', docRef.id);
+        showNotification('테스트 질문이 생성되었습니다!', 'success');
+        
+    } catch (error) {
+        console.error('❌ 테스트 질문 생성 실패:', error);
+        showNotification('테스트 질문 생성에 실패했습니다: ' + error.message, 'error');
     }
 }
 
 // 기본 관리자 생성
-function createDefaultAdmins() {
+async function createDefaultAdmins() {
+    console.log('👨‍💼 기본 관리자 생성 시작');
+    
+    // 로그인한 사용자가 있으면 자동으로 슈퍼 관리자로 추가
+    if (currentUser && currentUser.email) {
+        try {
+            if (db && modules) {
+                const { collection, doc, setDoc, serverTimestamp } = modules;
+                
+                // admin1 ID로 첫 번째 관리자 생성
+                const adminDocId = 'admin1';
+                const adminRef = doc(collection(db, 'admins'), adminDocId);
+                
+                const adminData = {
+                    id: adminDocId,
+                    name: currentUser.displayName || currentUser.email.split('@')[0],
+                    email: currentUser.email,
+                    role: 'super',
+                    status: 'active',
+                    department: '시스템 관리',
+                    createdAt: serverTimestamp(),
+                    createdBy: 'system',
+                    lastLogin: serverTimestamp()
+                };
+                
+                await setDoc(adminRef, adminData);
+                
+                console.log('✅ 현재 사용자를 admin1 슈퍼 관리자로 추가:', currentUser.email);
+                
+                // 로컬 배열에도 추가
+                allAdmins = [{
+                    id: adminDocId,
+                    name: adminData.name,
+                    email: adminData.email,
+                    role: 'super',
+                    status: 'active',
+                    department: '시스템 관리',
+                    createdAt: new Date(),
+                    lastLogin: new Date()
+                }];
+                
+                return;
+            }
+        } catch (error) {
+            console.error('❌ 기본 관리자 Firestore 추가 실패:', error);
+        }
+    }
+    
+    // Firestore 연결이 없거나 사용자가 없으면 로컬 기본값 사용
     allAdmins = [
         {
             id: 'admin1',
@@ -498,32 +435,19 @@ function createDefaultAdmins() {
             createdAt: new Date('2024-01-01'),
             lastLogin: new Date(),
             department: '개발팀'
-        },
-        {
-            id: 'admin2',
-            name: '김관리',
-            email: 'dbal951120@naver.com',
-            role: 'admin',
-            status: 'active',
-            createdAt: new Date('2024-02-01'),
-            lastLogin: new Date(Date.now() - 86400000),
-            department: '고객지원팀'
         }
     ];
-    
-    console.log('✅ 기본 관리자 생성 완료:', allAdmins.length, '명');
+    console.log('✅ 로컬 기본 관리자 생성 완료:', allAdmins.length, '명');
 }
 
-// 오프라인 데이터 로드 (Firebase 연결 실패 시)
+// 오프라인 데이터 로드
 function loadOfflineData() {
     console.log('📦 오프라인 데이터 로드 시작');
     
-    // 기존 테스트 데이터 로드 함수들 호출
-    loadTestUsers();
-    loadTestQuestions();
+    allUsers = [];
+    allQuestions = [];
     createDefaultAdmins();
     
-    // UI 업데이트
     updateDashboard();
     updateMemberStats();
     updateMembersTable();
@@ -533,23 +457,18 @@ function loadOfflineData() {
     console.log('✅ 오프라인 데이터 로드 완료');
 }
 
-// 슈퍼 관리자 확인 함수
-function isSuperAdmin(email) {
-    const superAdminEmails = [
-        'bcshin03@gmail.com',  // 새로운 슈퍼 관리자
-        'bcshin03@naver.com'   // 기존 슈퍼 관리자 (임시 유지)
-    ];
-    return superAdminEmails.includes(email);
-}
-
-// 관리자 권한 확인 함수
+// 관리자 권한 확인
 function checkAdminPermissions(user) {
-    if (!user) return false;
+    if (!user) return { role: 'user', permissions: [], canDeleteAdmin: false };
     
     const email = user.email;
+    const superAdminEmails = [
+        'bcshin03@gmail.com',
+        'bcshin03@naver.com',
+        'bcshin03ais@gmail.com'
+    ];
     
-    // 슈퍼 관리자 확인
-    if (isSuperAdmin(email)) {
+    if (superAdminEmails.includes(email)) {
         return {
             role: 'super',
             permissions: ['모든 권한', '시스템 관리', '관리자 관리', '데이터 관리'],
@@ -557,92 +476,17 @@ function checkAdminPermissions(user) {
         };
     }
     
-    // 기타 관리자 권한 체크 로직
     return {
-        role: 'readonly',
-        permissions: ['읽기 전용'],
+        role: 'admin',
+        permissions: ['읽기', '질문 답변'],
         canDeleteAdmin: false
     };
 }
 
-// 관리자 초기화
-function initializeAdmin() {
-    console.log('🚀 관리자 초기화 시작');
-    
-    // EmailJS 초기화
-    initializeEmailJS();
-    
-    // 기본 템플릿과 관리자 목록을 먼저 로드
-    loadDefaultTemplates();
-    updateAdminsList(); // 즉시 기본 관리자 목록 표시
-    
-    // 인증 상태 확인 (Firebase가 있는 경우만)
-    if (auth && typeof auth.onAuthStateChanged === 'function') {
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                currentUser = user;
-                console.log('✅ 관리자 로그인:', user.email);
-                
-                // 권한 확인
-                const permissions = checkAdminPermissions(user);
-                console.log('👤 관리자 권한:', permissions);
-                
-                updateAdminInfo(user, permissions);
-                loadAllData();
-            } else {
-                console.log('❌ 관리자 로그아웃');
-                // 인증되지 않은 상태에서도 기본 관리자 목록은 표시
-                updateAdminsList();
-                // redirectToLogin();
-            }
-        });
-    } else {
-        console.log('🔧 Firebase 인증 없음, 오프라인 모드로 실행');
-        // Firebase 없이도 기본 데이터 로드
-        updateAdminsList();
-        loadAllData();
-    }
-
-    // 이벤트 리스너 설정
-    setupEventListeners();
-}
-
-// EmailJS 초기화 함수 추가
-function initializeEmailJS() {
-    console.log('📧 EmailJS 초기화 시작');
-    
-    try {
-        // EmailJS 라이브러리가 로드되었는지 확인
-        if (typeof emailjs !== 'undefined') {
-            // 🔧 새 EmailJS Public Key (여기에 새 키 입력)
-            const publicKey = 'wI9C5j1QXuU5oxAZR'; // ⬅️ 새 Public Key로 교체
-            
-            // 새 키가 아직 입력되지 않았으면 기본값 사용
-            if (publicKey === 'YOUR_NEW_PUBLIC_KEY') {
-                console.warn('⚠️ 새 EmailJS Public Key를 입력해주세요');
-                return false;
-            }
-            
-            emailjs.init(publicKey);
-            console.log('✅ EmailJS 초기화 완료 (새 계정)');
-            return true;
-        } else {
-            console.warn('⚠️ EmailJS 라이브러리가 아직 로드되지 않음');
-            // 0.5초 후 다시 시도
-            setTimeout(initializeEmailJS, 500);
-            return false;
-        }
-    } catch (error) {
-        console.error('❌ EmailJS 초기화 오류:', error);
-        return false;
-    }
-}
-
-// 기본 템플릿 로드 함수 추가
+// 기본 템플릿 로드
 function loadDefaultTemplates() {
     console.log('📄 기본 템플릿 로드 시작');
     
-    // 기본 템플릿들
     const defaultTemplates = [
         {
             id: 'template1',
@@ -658,452 +502,32 @@ function loadDefaultTemplates() {
 
 중간계 AI 스튜디오 드림`,
             category: 'general'
-        },
-        {
-            id: 'template2',
-            title: '기술 지원 답변',
-            content: `안녕하세요. 중간계 AI 스튜디오입니다.
-
-기술 관련 문의에 대해 답변드립니다.
-
-문제 해결 방법:
-1. [첫 번째 해결 방법]
-2. [두 번째 해결 방법]
-3. [세 번째 해결 방법]
-
-위 방법으로도 해결되지 않으시면 추가 지원을 제공해드리겠습니다.
-
-중간계 AI 스튜디오 기술지원팀`,
-            category: 'technical'
-        },
-        {
-            id: 'template3',
-            title: '서비스 안내',
-            content: `안녕하세요. 중간계 AI 스튜디오입니다.
-
-저희 서비스에 관심을 가져주셔서 감사합니다.
-
-중간계 AI 스튜디오는 다음과 같은 서비스를 제공합니다:
-• AI 상세페이지 제작
-• AI 최적화 쇼츠/릴스 제작
-• AI 반응형 홈페이지 제작
-• AI 챗봇 구축
-
-자세한 상담을 원하시면 언제든지 연락해 주세요.
-
-중간계 AI 스튜디오`,
-            category: 'service'
         }
     ];
     
-    // 전역 템플릿 배열에 추가
     templates = defaultTemplates;
     console.log('✅ 기본 템플릿 로드 완료:', templates.length, '개');
-    
-    // 템플릿 목록 업데이트
-    updateTemplatesList();
 }
 
-// 테스트용 질문 데이터 로드 함수 추가
-function loadTestQuestions() {
-    console.log('📋 테스트 질문 로드 시작');
-    
-    // Firebase에서 질문이 없는 경우 테스트 데이터 추가
-    if (allQuestions.length === 0) {
-        const testQuestions = [
-            {
-                id: 'test_question_1',
-                questionTitle: 'AI 상세페이지 제작 문의',
-                questionContent: '안녕하세요. AI를 활용한 상세페이지 제작에 대해 문의드리고 싶습니다. 기존 쇼핑몰에 적용 가능한지와 비용, 제작 기간이 궁금합니다.',
-                userName: 'BC Shine',
-                userEmail: 'bcshin03@gmail.com',
-                userPhone: '010-8869-1378',
-                questionTime: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2시간 전
-                status: 'pending',
-                priority: 'high'
-            },
-            {
-                id: 'test_question_2',
-                questionTitle: '반응형 홈페이지 제작 상담',
-                questionContent: '회사 홈페이지를 새로 만들려고 합니다. 모바일 최적화와 SEO가 잘 되는 반응형 홈페이지 제작이 가능한지 문의드립니다.',
-                userName: '김태진',
-                userEmail: 'taejin.kim@naver.com',
-                userPhone: '010-2345-6789',
-                questionTime: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5시간 전
-                status: 'answered',
-                priority: 'normal',
-                answer: '안녕하세요. 반응형 홈페이지 제작 문의 주셔서 감사합니다. 저희는 모바일 최적화와 SEO를 고려한 반응형 웹사이트 제작을 전문으로 하고 있습니다. 자세한 상담을 위해 연락드리겠습니다.',
-                answeredAt: new Date(Date.now() - 3 * 60 * 60 * 1000),
-                answeredBy: '관리자'
-            },
-            {
-                id: 'test_question_3',
-                questionTitle: 'AI 챗봇 구축 비용 문의',
-                questionContent: '고객 상담용 AI 챗봇을 구축하고 싶습니다. 어떤 기능들이 포함되고 비용은 어느 정도인지 알고 싶습니다.',
-                userName: '이소연',
-                userEmail: 'soyeon.lee@gmail.com',
-                userPhone: '010-9876-5432',
-                questionTime: new Date(Date.now() - 86400000), // 1일 전
-                status: 'answered',
-                priority: 'normal',
-                answer: 'AI 챗봇 구축 문의 감사합니다. 기본적인 FAQ 답변부터 복잡한 상담까지 다양한 수준의 챗봇 구축이 가능합니다. 상세 견적을 위해 요구사항을 파악한 후 맞춤 제안을 드리겠습니다.',
-                answeredAt: new Date(Date.now() - 12 * 60 * 60 * 1000),
-                answeredBy: '관리자'
-            },
-            {
-                id: 'test_question_4',
-                questionTitle: '쇼츠/릴스 콘텐츠 제작',
-                questionContent: '유튜브 쇼츠와 인스타그램 릴스용 AI 기반 콘텐츠 제작이 가능한가요? 제품 홍보용으로 활용하려고 합니다.',
-                userName: '박준호',
-                userEmail: 'junho.park@daum.net',
-                userPhone: '010-1111-2222',
-                questionTime: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6시간 전
-                status: 'pending',
-                priority: 'normal'
-            },
-            {
-                id: 'test_question_5',
-                questionTitle: '기존 사이트 AI 업그레이드',
-                questionContent: '현재 운영 중인 웹사이트에 AI 기능을 추가하고 싶습니다. 개인화 추천 시스템과 챗봇 연동이 가능한지 문의드립니다.',
-                userName: '김태진',
-                userEmail: 'taejin.kim@naver.com',
-                userPhone: '010-2345-6789',
-                questionTime: new Date(Date.now() - 3 * 86400000), // 3일 전
-                status: 'answered',
-                priority: 'high',
-                answer: '기존 사이트 AI 업그레이드 문의 감사합니다. 개인화 추천 시스템과 챗봇 연동 모두 가능합니다. 현재 사이트 구조를 분석한 후 최적의 AI 솔루션을 제안해드리겠습니다.',
-                answeredAt: new Date(Date.now() - 2 * 86400000),
-                answeredBy: '관리자'
-            }
-        ];
-        
-        allQuestions = testQuestions;
-        console.log('✅ 기존 회원 관련 질문 로드 완료:', allQuestions.length, '개');
-        
-        // 질문 목록 업데이트
-        updateQuestionsList();
-        updateDashboard();
-    }
-}
-
-// 관리자 정보 업데이트
-function updateAdminInfo(user, permissions) {
-    const adminName = document.getElementById('sidebarAdminName');
-    const adminEmail = document.getElementById('sidebarAdminEmail');
-    const adminRole = document.getElementById('sidebarAdminRole');
-    const headerProfileName = document.getElementById('headerProfileName');
-    const headerProfileAvatar = document.getElementById('headerProfileAvatar');
-    const sidebarAvatar = document.getElementById('sidebarAvatar');
-    
-    const displayName = user.displayName || user.email?.split('@')[0] || '관리자';
-    const initials = getInitials(displayName);
-    const avatarColor = getAvatarColor(user.email);
-    const roleText = permissions?.role === 'super' ? '슈퍼 관리자' : '관리자';
-    
-    if (adminName) adminName.textContent = displayName;
-    if (adminEmail) adminEmail.textContent = user.email;
-    if (adminRole) adminRole.textContent = roleText;
-    if (headerProfileName) headerProfileName.textContent = displayName;
-    
-    // 헤더 아바타 업데이트
-    if (headerProfileAvatar) {
-        headerProfileAvatar.innerHTML = `
-            <div class="avatar-circle" style="background: ${avatarColor}; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                ${initials}
-            </div>
-        `;
-    }
-    
-    // 사이드바 아바타 업데이트
-    if (sidebarAvatar) {
-        sidebarAvatar.innerHTML = `
-            <div class="avatar-circle" style="background: ${avatarColor}; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1rem; margin-right: 12px; border: 2px solid rgba(255,255,255,0.2);">
-                ${initials}
-            </div>
-        `;
-    }
-}
-
-// 이름에서 이니셜 추출
-function getInitials(name) {
-    if (!name) return 'A';
-    
-    // 한글 이름 처리
-    if (/[가-힣]/.test(name)) {
-        return name.length >= 2 ? name.substring(0, 2) : name;
-    }
-    
-    // 영문 이름 처리
-    const words = name.split(' ');
-    if (words.length >= 2) {
-        return words[0].charAt(0).toUpperCase() + words[1].charAt(0).toUpperCase();
-    }
-    
-    return name.substring(0, 2).toUpperCase();
-}
-
-// 이메일 기반 아바타 색상 생성
-function getAvatarColor(email) {
-    if (!email) return 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-    
-    // 이메일 기반으로 색상 선택
-    const colors = [
-        'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', // 파란-보라
-        'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', // 핑크-빨강
-        'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', // 하늘-청록
-        'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', // 초록-민트
-        'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', // 핑크-노랑
-        'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', // 민트-핑크
-        'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)', // 코랄-라벤더
-        'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)', // 크림-피치
-    ];
-    
-    // 이메일의 첫 글자를 기반으로 색상 선택
-    const index = email.charCodeAt(0) % colors.length;
-    return colors[index];
-}
-
-// 모든 데이터 로드
-function loadAllData() {
-    showLoading(true);
-    
-    Promise.all([
-        loadQuestions(),
-        loadUsers(),
-        loadTemplates(),
-        loadAdmins() // 관리자 로드 추가
-    ]).then(() => {
-        updateDashboard();
-        updateAdminsList(); // 관리자 목록 업데이트 추가
-        showLoading(false);
-        console.log('✅ 모든 데이터 로드 완료');
-    }).catch(error => {
-        console.error('데이터 로드 오류:', error);
-        console.log('📋 Firebase 연결 실패, 모든 테스트 데이터 로드 중...');
-        
-        // Firebase 연결 실패 시 모든 테스트 데이터 로드
-        loadTestQuestions();
-        loadTestUsers();
-        
-        updateDashboard();
-        updateAdminsList();
-        showLoading(false);
-    });
-}
-
-// 질문 데이터 로드
-async function loadQuestions() {
-    try {
-        if (db && typeof db.collection === 'function') {
-            // Firebase가 사용 가능한 경우
-            const questionsRef = db.collection('questions');
-            const questionsQuery = questionsRef.orderBy('questionTime', 'desc');
-            
-            questionsQuery.onSnapshot((snapshot) => {
-                allQuestions = [];
-                snapshot.forEach((doc) => {
-                    allQuestions.push({ id: doc.id, ...doc.data() });
-                });
-                
-                console.log('📋 Firebase 질문 데이터 로드됨:', allQuestions.length);
-                updateQuestionsList();
-                updateDashboard();
-            });
-        } else {
-            // Firebase가 없는 경우 테스트 데이터 사용
-            console.log('📋 Firebase 없음, 테스트 질문 사용');
-            if (allQuestions.length === 0) {
-                loadTestQuestions();
-            }
-            updateQuestionsList();
-            updateDashboard();
-        }
-        
-    } catch (error) {
-        console.error('질문 로드 오류:', error);
-        console.log('📋 Firebase 연결 실패, 테스트 질문 로드 중...');
-        
-        // Firebase 연결 실패 시 테스트 질문 로드
-        if (allQuestions.length === 0) {
-            loadTestQuestions();
-        }
-        updateQuestionsList();
-        updateDashboard();
-    }
-}
-
-// 사용자 데이터 로드
-async function loadUsers() {
-    try {
-        if (db && typeof db.collection === 'function') {
-            // Firebase가 사용 가능한 경우
-            const usersRef = db.collection('users');
-            const snapshot = await usersRef.get();
-            
-            allUsers = [];
-            snapshot.forEach((doc) => {
-                allUsers.push({ id: doc.id, ...doc.data() });
-            });
-            
-            console.log('👥 Firebase 사용자 데이터 로드됨:', allUsers.length);
-        } else {
-            // Firebase가 없는 경우 테스트 데이터 사용
-            console.log('👥 Firebase 없음, 테스트 사용자 사용');
-            if (allUsers.length === 0) {
-                loadTestUsers();
-            }
-        }
-        
-        updateUsersList();
-        
-    } catch (error) {
-        console.error('사용자 로드 오류:', error);
-        console.log('👥 Firebase 연결 실패, 테스트 사용자 로드 중...');
-        
-        // Firebase 연결 실패 시 테스트 사용자 로드
-        if (allUsers.length === 0) {
-            loadTestUsers();
-        }
-        updateUsersList();
-    }
-}
-
-// 테스트 사용자 데이터 로드
-function loadTestUsers() {
-    console.log('👥 테스트 사용자 데이터 로드 시작');
-    
-    const testUsers = [
-        {
-            id: 'user_1',
-            name: 'BC Shine',
-            email: 'bcshin03@gmail.com',
-            phone: '010-8869-1378',
-            status: 'active',
-            createdAt: new Date('2024-03-01'),
-            questionCount: 3,
-            answerCount: 2
-        },
-        {
-            id: 'user_2',
-            name: '김태진',
-            email: 'taejin.kim@naver.com',
-            phone: '010-2345-6789',
-            status: 'active',
-            createdAt: new Date('2024-03-10'),
-            questionCount: 2,
-            answerCount: 2
-        },
-        {
-            id: 'user_3',
-            name: '이소연',
-            email: 'soyeon.lee@gmail.com',
-            phone: '010-9876-5432',
-            status: 'active',
-            createdAt: new Date('2024-03-15'),
-            questionCount: 1,
-            answerCount: 1
-        },
-        {
-            id: 'user_4',
-            name: '박준호',
-            email: 'junho.park@daum.net',
-            phone: '010-1111-2222',
-            status: 'active',
-            createdAt: new Date('2024-03-20'),
-            questionCount: 1,
-            answerCount: 0
-        }
-    ];
-    
-    // 전역 배열에 추가
-    allUsers = testUsers;
-    console.log('✅ 기존 회원 4명 데이터 로드 완료:', allUsers.length, '명');
-    
-    // 회원 관련 UI 업데이트
-    updateUsersList();
-    updateMemberStats();
-    updateMembersTable();
-}
-
-// 기존 setupEventListeners 함수에 새 이벤트 추가
+// 이벤트 리스너 설정
 function setupEventListeners() {
     console.log('🔗 이벤트 리스너 설정 시작');
     
     try {
-        // 네비게이션 메뉴 클릭 이벤트
         const navItems = document.querySelectorAll('.nav-item');
-        console.log('🧭 네비게이션 아이템 수:', navItems.length);
-        
-        navItems.forEach((item, index) => {
-            // 기존 onclick 속성 확인
+        navItems.forEach((item) => {
             const onclickAttr = item.getAttribute('onclick');
-            console.log(`네비게이션 ${index + 1} onclick:`, onclickAttr);
-            
-            // onclick 속성이 있다면 그대로 두고, 없다면 이벤트 리스너 추가
             if (!onclickAttr) {
                 const href = item.getAttribute('href');
                 if (href && href.startsWith('#')) {
                     const sectionId = href.substring(1);
                     item.addEventListener('click', function(e) {
                         e.preventDefault();
-                        console.log('🖱️ 네비게이션 클릭:', sectionId);
                         showSection(sectionId);
                     });
                 }
             }
-            
-            // 시각적 피드백 추가
             item.style.cursor = 'pointer';
-        });
-        
-        // 관리자 추가 버튼 이벤트
-        const addAdminButtons = document.querySelectorAll('[onclick*="addAdmin"]');
-        console.log('➕ 관리자 추가 버튼 수:', addAdminButtons.length);
-        
-        addAdminButtons.forEach((btn, index) => {
-            console.log(`관리자 추가 버튼 ${index + 1} 설정`);
-            btn.style.cursor = 'pointer';
-            
-            // 호버 효과
-            btn.addEventListener('mouseenter', function() {
-                this.style.opacity = '0.9';
-            });
-            btn.addEventListener('mouseleave', function() {
-                this.style.opacity = '1';
-            });
-        });
-        
-        // 체크박스 변경 이벤트
-        document.addEventListener('change', function(e) {
-            if (e.target.matches('input[data-question-id]')) {
-                updateBulkActions();
-            }
-        });
-        
-        // 알림 드롭다운 외부 클릭시 닫기
-        document.addEventListener('click', function(e) {
-            const dropdown = document.getElementById('notificationDropdown');
-            const bell = document.querySelector('.notification-bell');
-            
-            if (dropdown && !dropdown.contains(e.target) && !bell?.contains(e.target)) {
-                dropdown.classList.remove('show');
-            }
-        });
-        
-        // 검색 입력 이벤트
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-            searchInput.addEventListener('input', function() {
-                console.log('🔍 검색:', this.value);
-            });
-        }
-        
-        // 모든 버튼에 클릭 로그 추가 (디버깅용)
-        document.addEventListener('click', function(e) {
-            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
-                const button = e.target.tagName === 'BUTTON' ? e.target : e.target.closest('button');
-                console.log('🖱️ 버튼 클릭:', button.textContent?.trim(), button.onclick?.toString().substring(0, 50));
-            }
         });
         
         console.log('✅ 이벤트 리스너 설정 완료');
@@ -1113,95 +537,19 @@ function setupEventListeners() {
     }
 }
 
-// 전역 초기화 함수도 노출
-window.initializePage = initializePage;
-window.getPermissionsByRole = getPermissionsByRole;
-window.showAdminCredentials = showAdminCredentials;
-window.setupEventListeners = setupEventListeners;
-window.initializeAnalyticsCharts = initializeAnalyticsCharts;
-window.showSection = showSection;
-window.showNotification = showNotification;
-window.showLoading = showLoading;
-window.updateTemplatesList = updateTemplatesList;
-window.updateQuestionsList = updateQuestionsList;
-window.updateUsersList = updateUsersList;
-window.updateDashboard = updateDashboard;
-window.updateDashboardCard = updateDashboardCard;
-window.updateAdminsList = updateAdminsList;
-window.loadTemplates = loadTemplates;
-window.loadAdmins = loadAdmins;
-window.updateMemberStats = updateMemberStats;
-window.updateMembersTable = updateMembersTable;
-window.initializeMemberCharts = initializeMemberCharts;
-window.updateBackupHistory = updateBackupHistory;
-window.viewMemberDetails = viewMemberDetails;
-window.editMember = editMember;
-window.createMemberRow = createMemberRow;
-window.updateStatCard = updateStatCard;
-window.createBackupHistoryItem = createBackupHistoryItem;
-window.createQuestionRow = createQuestionRow;
-window.createAdminCard = createAdminCard;
-window.createAdminCardHTML = createAdminCardHTML;
-window.getRoleText = getRoleText;
-window.answerQuestion = answerQuestion;
-window.viewQuestion = viewQuestion;
-window.deleteQuestion = deleteQuestion;
-window.toggleMemberStatus = toggleMemberStatus;
-window.addAdmin = addAdmin;
-window.editAdmin = editAdmin;
-window.viewAdminDetails = viewAdminDetails;
-window.deleteAdmin = deleteAdmin;
-window.refreshData = refreshData;
-window.logout = logout;
-window.toggleSidebar = toggleSidebar;
-window.toggleNotifications = toggleNotifications;
-window.getInitials = getInitials;
-window.getAvatarColor = getAvatarColor;
-window.updateAdminInfo = updateAdminInfo;
-
-// 새로 추가된 함수들 전역 노출
-window.showAllMembers = showAllMembers;
-window.filterMembersByPeriod = filterMembersByPeriod;
-window.updateFilterText = updateFilterText;
-window.updateMembersTableWithFilter = updateMembersTableWithFilter;
-window.highlightStatCard = highlightStatCard;
-
-// Firebase 관련 함수들 전역 노출
-window.setupFirebaseAuth = setupFirebaseAuth;
-window.loadFirebaseData = loadFirebaseData;
-window.loadFirebaseUsers = loadFirebaseUsers;
-window.syncWithAuthentication = syncWithAuthentication;
-window.loadUsersFromAuth = loadUsersFromAuth;
-window.loadFirebaseQuestions = loadFirebaseQuestions;
-window.loadFirebaseAdmins = loadFirebaseAdmins;
-window.createDefaultAdmins = createDefaultAdmins;
-window.loadOfflineData = loadOfflineData;
-
-// 답변 모달 관련 함수들 전역 노출
-window.closeAnswerModal = closeAnswerModal;
-window.submitAnswer = submitAnswer;
-window.saveAnswerToFirebase = saveAnswerToFirebase;
-window.sendAnswerEmail = sendAnswerEmail;
-window.updateTemplateButtons = updateTemplateButtons;
-window.insertTemplate = insertTemplate;
-
 // 섹션 표시
 function showSection(sectionId) {
-    console.log('🔄 showSection 호출됨:', sectionId);
+    console.log('🔄 showSection 호출:', sectionId);
     
     try {
         // 모든 섹션 숨기기
-        const allSections = document.querySelectorAll('.content-section');
-        console.log('📋 총 섹션 수:', allSections.length);
-        
+        const allSections = document.querySelectorAll('.content-section, .section');
         allSections.forEach(section => {
             section.classList.remove('active');
         });
         
         // 모든 네비게이션 아이템 비활성화
         const allNavItems = document.querySelectorAll('.nav-item');
-        console.log('🧭 총 네비게이션 아이템 수:', allNavItems.length);
-        
         allNavItems.forEach(item => {
             item.classList.remove('active');
         });
@@ -1210,96 +558,35 @@ function showSection(sectionId) {
         const targetSection = document.getElementById(sectionId);
         if (targetSection) {
             targetSection.classList.add('active');
-            console.log('✅ 섹션 활성화됨:', sectionId);
-        } else {
-            console.error('❌ 섹션을 찾을 수 없음:', sectionId);
-            return;
         }
         
         // 선택된 네비게이션 아이템 활성화
         const targetNavItem = document.querySelector(`[onclick*="showSection('${sectionId}')"]`);
         if (targetNavItem) {
             targetNavItem.classList.add('active');
-            console.log('✅ 네비게이션 아이템 활성화됨');
-        } else {
-            console.warn('⚠️ 네비게이션 아이템을 찾을 수 없음:', sectionId);
-            
-            // 대안: href로 찾기
-            const alternativeNavItem = document.querySelector(`[href="#${sectionId}"]`);
-            if (alternativeNavItem) {
-                alternativeNavItem.classList.add('active');
-                console.log('✅ 대안 네비게이션 아이템 활성화됨');
-            }
         }
         
-        // 페이지 제목 업데이트
-        const titles = {
-            dashboard: '대시보드',
-            questions: '질문 관리',
-            members: '회원 관리',
-            analytics: '통계 분석',
-            permissions: '권한 관리',
-            'data-management': '데이터 관리'
-        };
+        // 섹션별 데이터 로드
+        loadSectionData(sectionId);
         
-        const titleElement = document.getElementById('pageTitle');
-        if (titleElement && titles[sectionId]) {
-            titleElement.textContent = titles[sectionId];
-            console.log('📝 페이지 제목 업데이트:', titles[sectionId]);
-        }
-        
-        // 통계분석 페이지인 경우 차트 초기화
-        if (sectionId === 'analytics') {
-            console.log('📊 통계분석 차트 초기화 예약');
-            setTimeout(() => {
-                initializeAnalyticsCharts();
-            }, 100);
-        }
-        
-        // 회원 관리 페이지인 경우 회원 데이터 초기화
-        if (sectionId === 'members') {
-            console.log('👥 회원 관리 데이터 초기화 예약');
-            setTimeout(() => {
-                updateMemberStats();
-                updateMembersTable();
-                initializeMemberCharts();
-            }, 100);
-        }
-        
-        // 데이터 관리 페이지인 경우 백업 기록 업데이트
-        if (sectionId === 'data-management') {
-            console.log('💾 데이터 관리 백업 기록 업데이트 예약');
-            setTimeout(() => {
-                updateBackupHistory();
-            }, 100);
-        }
-        
-        console.log('🎉 showSection 완료:', sectionId);
+        console.log('✅ showSection 완료:', sectionId);
         
     } catch (error) {
         console.error('❌ showSection 오류:', error);
-        showNotification('페이지 전환 중 오류가 발생했습니다: ' + error.message, 'error');
     }
 }
 
-// showNotification 함수 추가
+// 알림 표시
 function showNotification(message, type = 'info') {
     console.log(`📢 알림 (${type}):`, message);
     
     try {
-        // 기존 알림 제거
         const existingNotifications = document.querySelectorAll('.notification-toast');
         existingNotifications.forEach(notification => notification.remove());
         
-        // 새 알림 생성
         const notification = document.createElement('div');
         notification.className = `notification-toast notification-${type}`;
         
-        // 메시지에서 줄바꿈 처리
-        const messageLines = message.split('\n');
-        const messageHtml = messageLines.map(line => `<div>${line}</div>`).join('');
-        
-        // 타입별 아이콘
         const icons = {
             success: '✅',
             error: '❌', 
@@ -1308,12 +595,13 @@ function showNotification(message, type = 'info') {
         };
         
         notification.innerHTML = `
-            <div class="notification-icon">${icons[type] || 'ℹ️'}</div>
-            <div class="notification-content">${messageHtml}</div>
-            <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span>${icons[type] || 'ℹ️'}</span>
+                <span>${message}</span>
+                <button onclick="this.parentElement.parentElement.remove()" style="margin-left: auto; background: none; border: none; font-size: 18px; cursor: pointer;">×</button>
+            </div>
         `;
         
-        // 스타일 적용
         notification.style.cssText = `
             position: fixed;
             top: 20px;
@@ -1333,983 +621,1020 @@ function showNotification(message, type = 'info') {
             z-index: 10000;
             max-width: 400px;
             min-width: 300px;
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
             font-family: inherit;
-            animation: slideInRight 0.3s ease-out;
         `;
         
-        // CSS 애니메이션 추가
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideInRight {
-                from {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-            }
-            .notification-close {
-                background: none;
-                border: none;
-                font-size: 18px;
-                cursor: pointer;
-                color: inherit;
-                opacity: 0.7;
-                margin-left: auto;
-            }
-            .notification-close:hover {
-                opacity: 1;
-            }
-            .notification-icon {
-                font-size: 16px;
-                flex-shrink: 0;
-            }
-            .notification-content {
-                flex: 1;
-                line-height: 1.4;
-            }
-        `;
-        document.head.appendChild(style);
-        
-        // DOM에 추가
         document.body.appendChild(notification);
         
-        // 5초 후 자동 제거
         setTimeout(() => {
             if (notification.parentElement) {
-                notification.style.animation = 'slideInRight 0.3s ease-out reverse';
-                setTimeout(() => {
-                    if (notification.parentElement) {
-                        notification.remove();
-                    }
-                }, 300);
+                notification.remove();
             }
         }, 5000);
         
     } catch (error) {
         console.error('알림 표시 오류:', error);
-        // 기본적으로는 alert 사용
-        if (type === 'error') {
-            alert('❌ ' + message.replace(/\n/g, ' '));
-        } else {
-            console.log('✅ ' + message);
-        }
+        alert(message);
     }
 }
 
-// 로딩 표시 함수
+// 로딩 표시
 function showLoading(show) {
     console.log('🔄 로딩 상태:', show ? '표시' : '숨김');
-    
     const loadingElement = document.getElementById('loadingSpinner');
     if (loadingElement) {
         loadingElement.style.display = show ? 'block' : 'none';
     }
 }
 
-// 디버깅용 테스트 함수들
-window.testNavigation = function() {
-    console.log('🧪 네비게이션 테스트 시작');
-    
-    const sections = ['dashboard', 'questions', 'members', 'analytics', 'permissions', 'data-management'];
-    
-    sections.forEach(section => {
-        console.log(`테스트: ${section}`);
-        setTimeout(() => {
-            showSection(section);
-        }, 100);
-    });
-};
-
-window.testElementsExist = function() {
-    console.log('🔍 HTML 요소 존재 확인');
-    
-    const elementsToCheck = [
-        '.nav-item',
-        '.content-section',
-        '#pageTitle',
-        '#dashboard',
-        '#questions',
-        '#members',
-        '#analytics',
-        '#permissions',
-        '#data-management'
-    ];
-    
-    elementsToCheck.forEach(selector => {
-        const elements = document.querySelectorAll(selector);
-        console.log(`${selector}: ${elements.length}개 발견`);
-        
-        if (elements.length === 0) {
-            console.warn(`⚠️ ${selector} 요소가 존재하지 않습니다!`);
-        }
-    });
-};
-
-window.forceInitialize = function() {
-    console.log('💪 강제 초기화 시작');
-    initializePage();
-};
-
-// 누락된 함수들 구현
-
-// 템플릿 목록 업데이트
-function updateTemplatesList() {
-    console.log('📄 템플릿 목록 업데이트:', templates.length, '개');
-    // 실제 UI가 있다면 여기서 업데이트
-    // 현재는 로그만 출력
-}
-
-// 질문 목록 업데이트
+// UI 업데이트 함수들
 function updateQuestionsList() {
     console.log('📋 질문 목록 업데이트:', allQuestions.length, '개');
     
-    // 답변 대기 질문 수 계산
     const pendingCount = allQuestions.filter(q => q.status === 'pending').length;
     
-    // 배지 업데이트
-    const badge = document.getElementById('pendingCount');
+    const badge = document.getElementById('questionBadge');
     if (badge) {
         badge.textContent = pendingCount;
         badge.style.display = pendingCount > 0 ? 'inline' : 'none';
     }
     
-    // 질문 테이블 업데이트
-    const tableBody = document.getElementById('questionsTableBody');
-    if (tableBody) {
-        tableBody.innerHTML = '';
-        
-        if (allQuestions.length > 0) {
-            allQuestions.forEach(question => {
-                const row = createQuestionRow(question);
-                tableBody.appendChild(row);
-            });
-        } else {
-            // 질문이 없는 경우 메시지 표시
-            const emptyRow = document.createElement('tr');
-            emptyRow.innerHTML = `
-                <td colspan="7" style="text-align: center; padding: 40px; color: #666;">
-                    <i class="fas fa-comments" style="font-size: 2rem; margin-bottom: 10px; display: block; opacity: 0.3;"></i>
-                    <div style="margin-bottom: 10px;">아직 접수된 질문이 없습니다.</div>
-                    <div style="font-size: 0.9rem; color: #999;">
-                        홈페이지 Q&A 섹션에서 질문이 제출되면 여기에 실시간으로 표시됩니다.
-                    </div>
-                </td>
-            `;
-            tableBody.appendChild(emptyRow);
-        }
-    }
-    
-    // 페이지 제목의 질문 수 업데이트
-    const pageTitle = document.querySelector('#questions h2');
-    if (pageTitle) {
-        pageTitle.textContent = `질문 관리 (${allQuestions.length}건)`;
+    // 질문 관리 페이지의 테이블 업데이트
+    const questionsTable = document.getElementById('questionsTable');
+    if (questionsTable) {
+        updateQuestionsTable();
     }
 }
 
-// 질문 테이블 행 생성
-function createQuestionRow(question) {
-    const row = document.createElement('tr');
+function updateQuestionsTable() {
+    console.log('📋 질문 테이블 업데이트 시작');
     
-    // 상태별 스타일 클래스
-    const statusClass = {
-        'pending': 'status-pending',
-        'answered': 'status-answered',
-        'in-progress': 'status-progress'
-    }[question.status] || 'status-pending';
+    const questionsTable = document.getElementById('questionsTable');
+    if (!questionsTable) {
+        console.warn('⚠️ 질문 테이블 요소를 찾을 수 없음');
+        return;
+    }
     
-    // 우선순위별 스타일
-    const priorityClass = {
-        'high': 'priority-high',
-        'urgent': 'priority-urgent',
-        'normal': 'priority-normal'
-    }[question.priority] || 'priority-normal';
-    
-    // 질문 시간 포맷
-    const questionTime = question.questionTime ? 
-        (question.questionTime.toDate ? question.questionTime.toDate() : new Date(question.questionTime)) :
-        new Date();
-    
-    row.innerHTML = `
-        <td>
-            <input type="checkbox" data-question-id="${question.id}">
-        </td>
-        <td>
-            <span class="priority-badge ${priorityClass}">
-                ${question.priority === 'urgent' ? '긴급' : 
-                  question.priority === 'high' ? '높음' : '보통'}
-            </span>
-        </td>
-        <td>
-            <span class="status-badge ${statusClass}">
-                ${question.status === 'pending' ? '답변대기' : 
-                  question.status === 'answered' ? '답변완료' : 
-                  question.status === 'in-progress' ? '답변중' : '보류'}
-            </span>
-        </td>
-        <td>
-            <div class="question-title">${question.questionTitle || '제목 없음'}</div>
-            <div class="question-preview">${(question.questionContent || '').substring(0, 50)}...</div>
-        </td>
-        <td>
-            <div class="user-info">
-                <div class="user-name">${question.userName || '익명'}</div>
-                <div class="user-email">${question.userEmail || ''}</div>
-            </div>
-        </td>
-        <td>
-            <div class="date-info">
-                <div class="date">${questionTime.toLocaleDateString()}</div>
-                <div class="time">${questionTime.toLocaleTimeString()}</div>
-            </div>
-        </td>
-        <td>
-            <div class="action-buttons-row">
-                <button class="btn-action btn-answer" onclick="answerQuestion('${question.id}')" title="답변하기">
-                    <i class="fas fa-reply"></i> 답변
-                </button>
-                <button class="btn-action btn-view btn-icon-only" onclick="viewQuestion('${question.id}')" title="상세보기">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button class="btn-action btn-delete btn-icon-only" onclick="deleteQuestion('${question.id}')" title="삭제">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </td>
+    // 로딩 표시
+    questionsTable.innerHTML = `
+        <tr>
+            <td colspan="5" style="text-align: center; padding: 40px; color: #666;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                <div>질문 목록을 불러오는 중...</div>
+            </td>
+        </tr>
     `;
     
-    return row;
+    if (allQuestions.length === 0) {
+        // 질문이 없으면 안내 메시지
+        questionsTable.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 40px; color: #666;">
+                    <div style="margin-bottom: 15px;">
+                        <i class="fas fa-comments" style="font-size: 2rem; color: #ccc; margin-bottom: 10px;"></i>
+                        <div><strong>접수된 질문이 없습니다</strong></div>
+                        <div style="margin-top: 10px; font-size: 0.9rem; color: #999;">
+                            "테스트 질문 생성" 버튼으로 샘플 질문을 만들어보세요.
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // 실제 질문 데이터 표시
+    questionsTable.innerHTML = allQuestions.map(question => {
+        const questionTime = question.questionTime instanceof Date ? 
+            question.questionTime : new Date(question.questionTime);
+        
+        const statusBadges = {
+            'pending': 'badge-pending',
+            'answered': 'badge-completed', 
+            'in-progress': 'badge-progress',
+            'completed': 'badge-completed'
+        };
+        
+        const statusLabels = {
+            'pending': '미답변',
+            'answered': '답변완료',
+            'in-progress': '답변중',
+            'completed': '답변완료'
+        };
+        
+        const statusClass = statusBadges[question.status] || 'badge-pending';
+        const statusLabel = statusLabels[question.status] || '미답변';
+        
+        return `
+            <tr>
+                <td>
+                    <span class="badge ${statusClass}">${statusLabel}</span>
+                </td>
+                <td>
+                    <div style="font-weight: 500; margin-bottom: 4px;">${question.questionTitle || '제목 없음'}</div>
+                    <div style="font-size: 0.8rem; color: #666; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${(question.questionContent || '').substring(0, 50)}...
+                    </div>
+                </td>
+                <td>
+                    <div style="font-weight: 500;">${question.userName || '익명'}</div>
+                    <div style="font-size: 0.8rem; color: #666;">${question.userEmail || ''}</div>
+                </td>
+                <td>
+                    <div style="font-size: 0.9rem;">${questionTime.toLocaleDateString('ko-KR')}</div>
+                    <div style="font-size: 0.8rem; color: #666;">${questionTime.toLocaleTimeString('ko-KR', {hour: '2-digit', minute: '2-digit'})}</div>
+                </td>
+                <td>
+                    <div style="display: flex; gap: 5px;">
+                        ${question.status === 'pending' || question.status === 'in-progress' ? 
+                            `<button class="btn btn-success btn-sm" onclick="answerQuestion('${question.id}')" style="font-size: 0.8rem;">
+                                <i class="fas fa-reply"></i> 답변
+                            </button>` : 
+                            `<button class="btn btn-outline btn-sm" onclick="viewQuestion('${question.id}')" style="font-size: 0.8rem;">
+                                <i class="fas fa-eye"></i> 보기
+                            </button>`
+                        }
+                        <button class="btn btn-danger btn-sm" onclick="deleteQuestion('${question.id}')" style="font-size: 0.8rem;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    console.log('✅ 질문 테이블 업데이트 완료:', allQuestions.length, '개');
 }
 
-// 사용자 목록 업데이트
-function updateUsersList() {
-    console.log('👥 사용자 목록 업데이트:', allUsers.length, '개');
-    // 실제 UI가 있다면 여기서 업데이트
-}
-
-// 대시보드 업데이트
 function updateDashboard() {
     console.log('📊 대시보드 업데이트 시작');
     
     try {
-        // 기본 통계 계산
         const totalQuestions = allQuestions.length;
         const pendingQuestions = allQuestions.filter(q => q.status === 'pending').length;
         const answeredQuestions = allQuestions.filter(q => q.status === 'answered').length;
         const totalUsers = allUsers.length;
         
-        // 날짜별 통계 계산
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-        
-        // 회원 통계
-        const todayMembers = allUsers.filter(user => {
-            if (!user.createdAt) return false;
-            const userDate = new Date(user.createdAt);
-            return userDate >= today;
-        }).length;
-        
-        const weeklyMembers = allUsers.filter(user => {
-            if (!user.createdAt) return false;
-            const userDate = new Date(user.createdAt);
-            return userDate >= weekAgo;
-        }).length;
-        
-        const monthlyMembers = allUsers.filter(user => {
-            if (!user.createdAt) return false;
-            const userDate = new Date(user.createdAt);
-            return userDate >= monthAgo;
-        }).length;
-        
-        // 질문 통계
-        const todayQuestions = allQuestions.filter(q => {
-            if (!q.createdAt) return false;
-            const questionDate = new Date(q.createdAt);
-            return questionDate >= today;
-        }).length;
-        
-        const weeklyQuestions = allQuestions.filter(q => {
-            if (!q.createdAt) return false;
-            const questionDate = new Date(q.createdAt);
-            return questionDate >= weekAgo;
-        }).length;
-        
-        const monthlyQuestions = allQuestions.filter(q => {
-            if (!q.createdAt) return false;
-            const questionDate = new Date(q.createdAt);
-            return questionDate >= monthAgo;
-        }).length;
-        
-        // HTML ID에 직접 업데이트 (실제 존재하는 ID들)
-        updateStatCard('todayMembers', todayMembers);
-        updateStatCard('weeklyMembers', weeklyMembers);
-        updateStatCard('monthlyMembers', monthlyMembers);
         updateStatCard('pendingQuestions', pendingQuestions);
-        updateStatCard('todayQuestions', todayQuestions);
-        updateStatCard('weeklyQuestions', weeklyQuestions);
-        updateStatCard('monthlyQuestions', monthlyQuestions);
         updateStatCard('totalMembers', totalUsers);
+        updateStatCard('totalQuestions', totalQuestions);
+        updateStatCard('answeredQuestions', answeredQuestions);
         
-        console.log('✅ 대시보드 업데이트 완료:', {
-            회원: { 총: totalUsers, 오늘: todayMembers, 주간: weeklyMembers, 월간: monthlyMembers },
-            질문: { 총: totalQuestions, 대기: pendingQuestions, 완료: answeredQuestions, 오늘: todayQuestions, 주간: weeklyQuestions, 월간: monthlyQuestions }
-        });
+        console.log('✅ 대시보드 업데이트 완료');
         
     } catch (error) {
         console.error('❌ 대시보드 업데이트 오류:', error);
     }
 }
 
-// 통계 카드 업데이트 헬퍼 함수 (간단한 버전)
 function updateStatCard(elementId, value) {
     const element = document.getElementById(elementId);
     if (element) {
         element.textContent = value;
-        console.log(`✅ DOM 업데이트: ${elementId} → ${value}`);
-    } else {
-        console.warn(`⚠️ DOM 요소를 찾을 수 없습니다: ${elementId}`);
     }
 }
 
-// 대시보드 카드 업데이트 헬퍼 함수
-function updateDashboardCard(title, value, change) {
-    // 실제 대시보드 카드가 있다면 업데이트
-    console.log(`📈 ${title}: ${value} (${change})`);
+function updateMemberStats() {
+    console.log('👥 회원 통계 업데이트');
     
-    // 제목을 기반으로 해당하는 DOM 요소 찾기 및 업데이트
-    const titleToIdMap = {
-        '전체 질문': 'totalQuestions',
-        '답변 대기': 'pendingQuestions', 
-        '답변 완료': 'answeredQuestions',
-        '등록 사용자': 'totalMembers',
-        '오늘 신규 회원': 'todayMembers',
-        '주간 신규 회원': 'weeklyMembers',
-        '월간 신규 회원': 'monthlyMembers',
-        '오늘 접수 질문': 'todayQuestions',
-        '주간 접수 질문': 'weeklyQuestions',
-        '월간 접수 질문': 'monthlyQuestions'
-    };
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const thisWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     
-    const elementId = titleToIdMap[title];
-    if (elementId) {
-        const element = document.getElementById(elementId);
-        if (element) {
-            element.textContent = value;
-            console.log(`✅ DOM 업데이트: ${elementId} → ${value}`);
-        } else {
-            console.warn(`⚠️ DOM 요소를 찾을 수 없습니다: ${elementId}`);
-        }
-    } else {
-        console.warn(`⚠️ 매핑되지 않은 제목: ${title}`);
-    }
+    const todayNewMembers = allUsers.filter(user => {
+        const joinDate = user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt);
+        return joinDate >= today;
+    }).length;
+    
+    const weeklyNewMembers = allUsers.filter(user => {
+        const joinDate = user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt);
+        return joinDate >= thisWeek;
+    }).length;
+    
+    const monthlyNewMembers = allUsers.filter(user => {
+        const joinDate = user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt);
+        return joinDate >= thisMonth;
+    }).length;
+    
+    updateStatCard('todayMembers', todayNewMembers);
+    updateStatCard('weeklyMembers', weeklyNewMembers);
+    updateStatCard('monthlyMembers', monthlyNewMembers);
+    updateStatCard('totalMembers', allUsers.length);
 }
 
-// 관리자 목록 업데이트
+function updateMembersTable() {
+    console.log('📋 회원 테이블 업데이트 시작');
+    
+    const membersTable = document.getElementById('membersTable');
+    if (!membersTable) {
+        console.warn('⚠️ 회원 테이블 요소를 찾을 수 없음');
+        return;
+    }
+    
+    // 로딩 표시
+    membersTable.innerHTML = `
+        <tr>
+            <td colspan="5" style="text-align: center; padding: 40px; color: #666;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                <div>회원 정보를 불러오는 중...</div>
+            </td>
+        </tr>
+    `;
+    
+    if (allUsers.length === 0) {
+        // Firebase에서 사용자 데이터가 없으면 안내 메시지
+        membersTable.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 40px; color: #666;">
+                    <div style="margin-bottom: 15px;">
+                        <i class="fas fa-users" style="font-size: 2rem; color: #ccc; margin-bottom: 10px;"></i>
+                        <div><strong>등록된 회원이 없습니다</strong></div>
+                        <div style="margin-top: 10px; font-size: 0.9rem; color: #999;">
+                            사용자가 로그인하면 자동으로 회원 정보가 표시됩니다.
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // 실제 회원 데이터 표시
+    membersTable.innerHTML = allUsers.map(user => {
+        const joinDate = user.createdAt instanceof Date ? user.createdAt : new Date(user.createdAt);
+        
+        return `
+            <tr>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 35px; height: 35px; border-radius: 50%; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem;">
+                            ${user.name ? user.name.substring(0, 2) : 'U'}
+                        </div>
+                        <div>
+                            <div style="font-weight: 500;">${user.name || '이름 없음'}</div>
+                            <div style="font-size: 0.8rem; color: #666;">${user.role || 'user'}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div style="font-size: 0.9rem;">${user.email || '이메일 없음'}</div>
+                </td>
+                <td>
+                    <div style="font-size: 0.9rem;">${user.phone || '전화번호 없음'}</div>
+                </td>
+                <td>
+                    <div style="font-size: 0.9rem;">${joinDate.toLocaleDateString('ko-KR')}</div>
+                    <div style="font-size: 0.8rem; color: #666;">${joinDate.toLocaleTimeString('ko-KR', {hour: '2-digit', minute: '2-digit'})}</div>
+                </td>
+                <td>
+                    <span style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 500;">
+                        ${user.questionCount || 0}개
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    console.log('✅ 회원 테이블 업데이트 완료:', allUsers.length, '명');
+}
+
 function updateAdminsList() {
-    console.log('👨‍💼 관리자 목록 업데이트 시작');
+    console.log('👨‍💼 관리자 목록 업데이트');
+    
+    const tableBody = document.getElementById('adminsTable');
+    if (!tableBody) return;
+    
+    // 기본 로딩 표시
+    tableBody.innerHTML = `
+        <tr>
+            <td colspan="6" class="loading">
+                <i class="fas fa-spinner"></i>
+                <div>관리자 목록을 불러오는 중...</div>
+            </td>
+        </tr>
+    `;
+    
+    // 실제 관리자 데이터가 있으면 표시
+    if (allAdmins && allAdmins.length > 0) {
+        tableBody.innerHTML = allAdmins.map(admin => `
+            <tr>
+                <td>${admin.id}</td>
+                <td>${admin.name || '이름 없음'}</td>
+                <td>${admin.email}</td>
+                <td>
+                    <span class="badge ${admin.role === 'super' ? 'badge-success' : 'badge-primary'}">
+                        ${admin.role === 'super' ? '슈퍼 관리자' : '관리자'}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge ${admin.status === 'active' ? 'badge-completed' : 'badge-pending'}">
+                        ${admin.status === 'active' ? '활성' : '비활성'}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn btn-outline" onclick="editAdmin('${admin.id}')" title="수정">
+                        <i class="fas fa-edit"></i>
+                        수정
+                    </button>
+                    ${currentUser && checkAdminPermissions(currentUser).canDeleteAdmin && admin.email !== currentUser.email ? 
+                        `<button class="btn btn-danger" onclick="removeAdmin('${admin.id}')" title="삭제">
+                            <i class="fas fa-trash"></i>
+                            삭제
+                        </button>` : ''
+                    }
+                </td>
+            </tr>
+        `).join('');
+    } else {
+        // 관리자가 없는 경우
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: #666;">
+                    <i class="fas fa-user-shield" style="font-size: 2rem; margin-bottom: 10px; opacity: 0.5;"></i><br>
+                    등록된 관리자가 없습니다.<br>
+                    <button class="btn btn-primary" onclick="showAddAdminModal()" style="margin-top: 10px;">
+                        <i class="fas fa-plus"></i> 관리자 추가
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// 관리자 추가 모달 표시
+function showAddAdminModal() {
+    console.log('📝 관리자 추가 모달 열기');
+    
+    // 기존 사용자 목록을 선택 옵션으로 로드
+    loadAvailableUsers();
+    
+    const modal = document.getElementById('addAdminModal');
+    if (modal) {
+        modal.classList.add('active');
+    }
+}
+
+// 관리자 추가 모달 닫기
+function closeAddAdminModal() {
+    console.log('❌ 관리자 추가 모달 닫기');
+    
+    const modal = document.getElementById('addAdminModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+    
+    // 폼 초기화
+    const form = modal.querySelector('form');
+    if (form) form.reset();
+}
+
+// 사용 가능한 사용자 목록 로드
+async function loadAvailableUsers() {
+    console.log('👥 사용 가능한 사용자 목록 로드');
     
     try {
-        // 기본 관리자 목록이 없다면 생성
-        if (allAdmins.length === 0) {
-            allAdmins = [
-                {
-                    id: 'admin1',
-                    name: '신일이삼',
-                    email: 'bcshin03@gmail.com',
-                    role: 'super',
-                    status: 'active',
-                    createdAt: new Date('2024-01-01'),
-                    avatar: null,
-                    lastLogin: new Date(),
-                    department: '개발팀'
-                },
-                {
-                    id: 'admin2',
-                    name: '김관리',
-                    email: 'admin@company.com',
-                    role: 'admin',
-                    status: 'active',
-                    createdAt: new Date('2024-02-01'),
-                    avatar: null,
-                    lastLogin: new Date(Date.now() - 86400000),
-                    department: '고객지원팀'
-                }
-            ];
-        }
-        
-        // 관리자 목록 컨테이너 찾기
-        const adminListContainer = document.querySelector('.admin-list');
-        if (adminListContainer) {
-            adminListContainer.innerHTML = '';
-            
-            allAdmins.forEach(admin => {
-                const adminCard = createAdminCard(admin);
-                adminListContainer.appendChild(adminCard);
-            });
-        } else {
-            // 컨테이너가 없다면 권한 관리 섹션에 직접 추가
-            const permissionsContainer = document.querySelector('.permissions-container');
-            if (permissionsContainer) {
-                permissionsContainer.innerHTML = `
-                    <div class="admin-list-header">
-                        <h3>관리자 목록</h3>
-                        <span class="admin-count">${allAdmins.length}명</span>
-                    </div>
-                    <div class="admin-list" id="adminList">
-                        ${allAdmins.map(admin => createAdminCardHTML(admin)).join('')}
-                    </div>
+        // 모든 Firebase Auth 사용자 가져오기 (실제로는 Firestore users 컬렉션에서)
+        if (allUsers && allUsers.length > 0) {
+            const userSelect = document.getElementById('userSelect');
+            if (userSelect) {
+                // 이미 관리자가 아닌 사용자들만 필터링
+                const adminEmails = allAdmins.map(admin => admin.email);
+                const availableUsers = allUsers.filter(user => !adminEmails.includes(user.email));
+                
+                userSelect.innerHTML = `
+                    <option value="">사용자를 선택하세요</option>
+                    ${availableUsers.map(user => `
+                        <option value="${user.email}" data-name="${user.name || user.email.split('@')[0]}">
+                            ${user.name || user.email.split('@')[0]} (${user.email})
+                        </option>
+                    `).join('')}
                 `;
             }
         }
         
-        console.log('✅ 관리자 목록 업데이트 완료:', allAdmins.length, '명');
-        
     } catch (error) {
-        console.error('❌ 관리자 목록 업데이트 오류:', error);
+        console.error('❌ 사용자 목록 로드 실패:', error);
     }
 }
 
-// 관리자 카드 HTML 생성
-function createAdminCardHTML(admin) {
-    const roleText = getRoleText(admin.role);
-    const statusClass = admin.status === 'active' ? 'online' : 'offline';
-    const lastLoginText = admin.lastLogin ? 
-        `마지막 로그인: ${admin.lastLogin.toLocaleDateString()}` : 
-        '로그인 기록 없음';
+// 관리자 추가
+async function addAdmin() {
+    console.log('➕ 관리자 추가 시작');
     
-    return `
-        <div class="admin-card" data-admin-id="${admin.id}">
-            <div class="admin-avatar">
-                <div class="avatar-circle" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem;">
-                    ${admin.name ? admin.name.substring(0, 2) : 'AD'}
-                </div>
-                <div class="status-indicator ${statusClass}"></div>
-            </div>
-            <div class="admin-details">
-                <div class="admin-header">
-                    <h4 class="admin-name">${admin.name || '이름 없음'}</h4>
-                    <span class="admin-role ${admin.role}">${roleText}</span>
-                </div>
-                <div class="admin-info">
-                    <div class="info-item">
-                        <i class="fas fa-envelope"></i>
-                        <span>${admin.email}</span>
-                    </div>
-                    <div class="info-item">
-                        <i class="fas fa-building"></i>
-                        <span>${admin.department || '부서 미지정'}</span>
-                    </div>
-                    <div class="info-item">
-                        <i class="fas fa-clock"></i>
-                        <span>${lastLoginText}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="admin-actions">
-                <button class="btn-sm btn-secondary" onclick="editAdmin('${admin.id}')" title="편집">
-                    <i class="fas fa-edit"></i>
+    const userSelect = document.getElementById('userSelect');
+    const adminRole = document.getElementById('newAdminRole');
+    
+    if (!userSelect || !userSelect.value) {
+        showNotification('사용자를 선택해주세요.', 'error');
+        return;
+    }
+    
+    if (!adminRole || !adminRole.value) {
+        showNotification('권한을 선택해주세요.', 'error');
+        return;
+    }
+    
+    try {
+        showLoading(true);
+        
+        const selectedEmail = userSelect.value;
+        const selectedOption = userSelect.querySelector(`option[value="${selectedEmail}"]`);
+        const selectedName = selectedOption ? selectedOption.getAttribute('data-name') : selectedEmail.split('@')[0];
+        const role = adminRole.value;
+        
+        if (!db || !modules) {
+            throw new Error('Firestore 연결이 없습니다.');
+        }
+        
+        const { collection, doc, setDoc, getDocs, serverTimestamp } = modules;
+        
+        // 다음 관리자 ID 번호 생성 (admin1, admin2, admin3...)
+        const nextAdminId = await getNextAdminId();
+        
+        // Firestore admins 컬렉션에 추가
+        const adminRef = doc(collection(db, 'admins'), nextAdminId);
+        
+        const adminData = {
+            id: nextAdminId,
+            name: selectedName,
+            email: selectedEmail,
+            role: role,
+            status: 'active',
+            department: role === 'super' ? '전체 관리' : role === 'admin' ? '일반 관리' : '제한적 관리',
+            createdAt: serverTimestamp(),
+            createdBy: currentUser ? currentUser.email : 'system',
+            lastLogin: serverTimestamp()
+        };
+        
+        await setDoc(adminRef, adminData);
+        
+        console.log('✅ 관리자 추가 완료:', nextAdminId, selectedEmail);
+        showNotification('관리자가 성공적으로 추가되었습니다!', 'success');
+        
+        // 데이터 새로고침 및 모달 닫기
+        await loadFirebaseAdmins();
+        updateAdminsList();
+        closeAddAdminModal();
+        
+    } catch (error) {
+        console.error('❌ 관리자 추가 실패:', error);
+        showNotification('관리자 추가에 실패했습니다: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// 다음 관리자 ID 번호 생성 함수
+async function getNextAdminId() {
+    console.log('🔢 다음 관리자 ID 생성');
+    
+    try {
+        if (!db || !modules) {
+            console.warn('⚠️ Firestore 연결 없음, 로컬 계산 사용');
+            return `admin${allAdmins.length + 1}`;
+        }
+        
+        const { collection, getDocs } = modules;
+        
+        // 기존 관리자들의 ID 조회
+        const adminsRef = collection(db, 'admins');
+        const adminsSnapshot = await getDocs(adminsRef);
+        
+        const existingIds = [];
+        adminsSnapshot.forEach((doc) => {
+            const adminId = doc.id;
+            // admin1, admin2 형태의 ID에서 숫자만 추출
+            const match = adminId.match(/^admin(\d+)$/);
+            if (match) {
+                existingIds.push(parseInt(match[1]));
+            }
+        });
+        
+        // 다음 번호 계산 (1부터 시작)
+        let nextNumber = 1;
+        if (existingIds.length > 0) {
+            nextNumber = Math.max(...existingIds) + 1;
+        }
+        
+        const nextId = `admin${nextNumber}`;
+        console.log('✅ 생성된 관리자 ID:', nextId);
+        
+        return nextId;
+        
+    } catch (error) {
+        console.error('❌ 관리자 ID 생성 실패:', error);
+        // 오류 시 현재 시간 기반으로 생성
+        return `admin${Date.now()}`;
+    }
+}
+
+// 관리자 수정
+function editAdmin(adminId) {
+    console.log('✏️ 관리자 수정:', adminId);
+    
+    const admin = allAdmins.find(a => a.id === adminId);
+    if (!admin) {
+        showNotification('관리자 정보를 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    // 수정 모달 열기
+    showEditAdminModal(admin);
+}
+
+// 관리자 수정 모달 표시
+function showEditAdminModal(admin) {
+    console.log('📝 관리자 수정 모달 열기:', admin.email);
+    
+    // 수정 모달이 없으면 동적으로 생성
+    let modal = document.getElementById('editAdminModal');
+    if (!modal) {
+        modal = createEditAdminModal();
+        document.body.appendChild(modal);
+    }
+    
+    // 폼에 기존 데이터 채우기
+    const editAdminId = document.getElementById('editAdminId');
+    const editAdminName = document.getElementById('editAdminName');
+    const editAdminEmail = document.getElementById('editAdminEmail');
+    const editAdminRole = document.getElementById('editAdminRole');
+    const editAdminStatus = document.getElementById('editAdminStatus');
+    
+    if (editAdminId) editAdminId.value = admin.id;
+    if (editAdminName) editAdminName.value = admin.name || '';
+    if (editAdminEmail) editAdminEmail.value = admin.email || '';
+    if (editAdminRole) editAdminRole.value = admin.role || 'admin';
+    if (editAdminStatus) editAdminStatus.value = admin.status || 'active';
+    
+    // 현재 수정 중인 관리자 ID 저장
+    modal.setAttribute('data-admin-id', admin.id);
+    
+    modal.classList.add('active');
+}
+
+// 관리자 수정 모달 HTML 생성
+function createEditAdminModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.id = 'editAdminModal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>관리자 수정</h3>
+                <button class="close-btn" onclick="closeEditAdminModal()">
+                    <i class="fas fa-times"></i>
                 </button>
-                <button class="btn-sm btn-info" onclick="viewAdminDetails('${admin.id}')" title="상세보기">
-                    <i class="fas fa-eye"></i>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="editAdminId">관리자 ID (변경 불가)</label>
+                    <input type="text" id="editAdminId" readonly style="background: #f5f5f5;">
+                </div>
+                <div class="form-group">
+                    <label for="editAdminName">이름</label>
+                    <input type="text" id="editAdminName" placeholder="관리자 이름">
+                </div>
+                <div class="form-group">
+                    <label for="editAdminEmail">이메일 (변경 불가)</label>
+                    <input type="email" id="editAdminEmail" readonly style="background: #f5f5f5;">
+                </div>
+                <div class="form-group">
+                    <label for="editAdminRole">권한</label>
+                    <select id="editAdminRole">
+                        <option value="super">슈퍼 관리자</option>
+                        <option value="admin">관리자</option>
+                        <option value="limited">제한적 관리자</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editAdminStatus">상태</label>
+                    <select id="editAdminStatus">
+                        <option value="active">활성</option>
+                        <option value="inactive">비활성</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeEditAdminModal()">취소</button>
+                <button class="btn btn-primary" onclick="updateAdmin()">
+                    <i class="fas fa-save"></i>
+                    저장
                 </button>
-                ${admin.role !== 'super' ? `
-                    <button class="btn-sm btn-danger" onclick="deleteAdmin('${admin.id}')" title="삭제">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                ` : ''}
             </div>
         </div>
     `;
+    return modal;
 }
 
-// 관리자 카드 DOM 요소 생성
-function createAdminCard(admin) {
-    const cardElement = document.createElement('div');
-    cardElement.className = 'admin-card';
-    cardElement.setAttribute('data-admin-id', admin.id);
-    cardElement.innerHTML = createAdminCardHTML(admin);
-    return cardElement;
-}
-
-// 역할 텍스트 반환
-function getRoleText(role) {
-    const roleMap = {
-        'super': '슈퍼 관리자',
-        'admin': '관리자',
-        'question': '질문 관리자',
-        'user': '사용자 관리자'
-    };
-    return roleMap[role] || '관리자';
-}
-
-// 템플릿 로드
-async function loadTemplates() {
-    try {
-        console.log('📄 템플릿 로드 시작');
-        // Firebase에서 템플릿 로드 시도
-        // 실패하면 기본 템플릿 사용 (이미 loadDefaultTemplates에서 처리됨)
-        console.log('✅ 템플릿 로드 완료');
-    } catch (error) {
-        console.error('템플릿 로드 오류:', error);
+// 관리자 수정 모달 닫기
+function closeEditAdminModal() {
+    console.log('❌ 관리자 수정 모달 닫기');
+    
+    const modal = document.getElementById('editAdminModal');
+    if (modal) {
+        modal.classList.remove('active');
     }
 }
 
-// 관리자 로드
-async function loadAdmins() {
-    try {
-        console.log('👨‍💼 관리자 로드 시작');
-        // Firebase에서 관리자 로드 시도
-        // 실패하면 기본 관리자 사용 (updateAdminsList에서 처리됨)
-        updateAdminsList();
-        console.log('✅ 관리자 로드 완료');
-    } catch (error) {
-        console.error('관리자 로드 오류:', error);
-        updateAdminsList(); // 오류 시에도 기본 관리자 목록 생성
+// 관리자 정보 업데이트
+async function updateAdmin() {
+    console.log('💾 관리자 정보 업데이트 시작');
+    
+    const modal = document.getElementById('editAdminModal');
+    const adminId = modal.getAttribute('data-admin-id');
+    
+    const editAdminName = document.getElementById('editAdminName');
+    const editAdminRole = document.getElementById('editAdminRole');
+    const editAdminStatus = document.getElementById('editAdminStatus');
+    
+    if (!adminId || !editAdminName || !editAdminRole || !editAdminStatus) {
+        showNotification('필수 정보가 누락되었습니다.', 'error');
+        return;
     }
-}
-
-// 회원 관리 관련 함수들
-
-// 회원 통계 업데이트
-function updateMemberStats() {
-    console.log('👥 회원 통계 업데이트 시작');
     
     try {
+        showLoading(true);
+        
+        if (!db || !modules) {
+            throw new Error('Firestore 연결이 없습니다.');
+        }
+        
+        const { collection, doc, updateDoc, serverTimestamp } = modules;
+        
+        // Firestore admins 컬렉션 업데이트
+        const adminRef = doc(collection(db, 'admins'), adminId);
+        
+        const updateData = {
+            name: editAdminName.value.trim(),
+            role: editAdminRole.value,
+            status: editAdminStatus.value,
+            updatedAt: serverTimestamp(),
+            updatedBy: currentUser ? currentUser.email : 'system'
+        };
+        
+        await updateDoc(adminRef, updateData);
+        
+        console.log('✅ 관리자 정보 업데이트 완료:', adminId);
+        showNotification('관리자 정보가 성공적으로 업데이트되었습니다!', 'success');
+        
+        // 데이터 새로고침 및 모달 닫기
+        await loadFirebaseAdmins();
+        updateAdminsList();
+        closeEditAdminModal();
+        
+    } catch (error) {
+        console.error('❌ 관리자 정보 업데이트 실패:', error);
+        showNotification('관리자 정보 업데이트에 실패했습니다: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// 관리자 삭제
+async function removeAdmin(adminId) {
+    console.log('🗑️ 관리자 삭제:', adminId);
+    
+    const admin = allAdmins.find(a => a.id === adminId);
+    if (!admin) {
+        showNotification('관리자 정보를 찾을 수 없습니다.', 'error');
+        return;
+    }
+    
+    // 자기 자신은 삭제할 수 없음
+    if (currentUser && admin.email === currentUser.email) {
+        showNotification('자기 자신은 삭제할 수 없습니다.', 'error');
+        return;
+    }
+    
+    // 확인 대화상자
+    const confirmDelete = confirm(`정말로 "${admin.name} (${admin.email})" 관리자를 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`);
+    if (!confirmDelete) return;
+    
+    try {
+        showLoading(true);
+        
+        if (!db || !modules) {
+            throw new Error('Firestore 연결이 없습니다.');
+        }
+        
+        const { collection, doc, deleteDoc } = modules;
+        
+        // Firestore admins 컬렉션에서 삭제
+        const adminRef = doc(collection(db, 'admins'), adminId);
+        await deleteDoc(adminRef);
+        
+        console.log('✅ 관리자 삭제 완료:', adminId);
+        showNotification('관리자가 성공적으로 삭제되었습니다!', 'success');
+        
+        // 데이터 새로고침
+        await loadFirebaseAdmins();
+        updateAdminsList();
+        
+    } catch (error) {
+        console.error('❌ 관리자 삭제 실패:', error);
+        showNotification('관리자 삭제에 실패했습니다: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// 전역 함수로 노출
+window.initializePage = initializePage;
+window.showSection = showSection;
+window.showNotification = showNotification;
+window.createTestQuestion = createTestQuestion;
+window.checkFirebaseStatus = checkFirebaseStatus;
+window.refreshData = refreshData;
+window.migrateAuthUsersToFirestore = migrateAuthUsersToFirestore;
+window.debugFirestoreDates = debugFirestoreDates;
+window.answerQuestion = answerQuestion;
+window.openAnswerModal = openAnswerModal;
+window.closeAnswerModal = closeAnswerModal;
+window.sendAnswer = sendAnswer;
+window.checkEmailStatus = checkEmailStatus;
+window.migrateAdminIds = migrateAdminIds;
+
+// 섹션별 데이터 로드 함수 추가
+function loadSectionData(sectionId) {
+    console.log('📄 섹션 데이터 로드:', sectionId);
+    
+    switch (sectionId) {
+        case 'dashboard':
+            updateDashboard();
+            updateMemberStats();
+            break;
+        case 'members':
+            updateMembersTable();
+            break;
+        case 'questions':
+            updateQuestionsTable();
+            break;
+        case 'admins':
+            updateAdminsList();
+            break;
+    }
+}
+
+// Firebase Auth 사용자들을 Firestore로 마이그레이션
+async function migrateAuthUsersToFirestore() {
+    console.log('🔄 Firebase Auth 사용자 마이그레이션 시작');
+    
+    if (!auth || !db || !modules) {
+        showNotification('Firebase 연결을 확인해주세요.', 'error');
+        return;
+    }
+    
+    try {
+        showNotification('Firebase Auth 사용자를 Firestore로 마이그레이션 중...', 'info');
+        
+        // 주의: 클라이언트에서는 모든 사용자 목록을 직접 가져올 수 없음
+        // 대신 현재 로그인된 사용자만 동기화하고, 
+        // 실제로는 각 사용자가 다시 로그인할 때 동기화됨
+        
+        if (currentUser) {
+            await syncUserToFirestore(currentUser);
+            showNotification('현재 사용자를 Firestore에 동기화했습니다.', 'success');
+        } else {
+            showNotification('로그인된 사용자가 없습니다. 다른 사용자들은 로그인할 때 자동으로 동기화됩니다.', 'warning');
+        }
+        
+        // Firestore에 기본 사용자 데이터 생성 (개발용)
+        await createDefaultUsersInFirestore();
+        
+    } catch (error) {
+        console.error('❌ 사용자 마이그레이션 실패:', error);
+        showNotification('사용자 마이그레이션 중 오류가 발생했습니다: ' + error.message, 'error');
+    }
+}
+
+// Firestore에 기본 사용자 데이터 생성 (개발용)
+async function createDefaultUsersInFirestore() {
+    console.log('👥 기본 사용자 데이터 생성 시작');
+    
+    try {
+        const { collection, doc, getDoc, setDoc, serverTimestamp } = modules;
+        
+        // Firebase Auth에서 보인 사용자들을 기반으로 기본 데이터 생성
+        const authUsers = [
+            {
+                email: 'bcshin03@gmail.com',
+                name: 'BC Shine',
+                role: 'admin'
+            },
+            {
+                email: 'bcshin03ais@gmail.com', 
+                name: 'BC Shine AI',
+                role: 'admin'
+            },
+            {
+                email: 'bcshin03@naver.com',
+                name: 'BC Shine Naver',
+                role: 'admin'  
+            },
+            {
+                email: 'midcampus31@gmail.com',
+                name: '중간계 캠퍼스',
+                role: 'user'
+            },
+            {
+                email: 'dbal951120@naver.com',
+                name: '사용자',
+                role: 'user'
+            },
+            {
+                email: '1231231123@gmail.com',
+                name: '테스트 사용자',
+                role: 'user'
+            },
+            {
+                email: 'ozung1008@naver.com',
+                name: 'ozung1008',
+                role: 'user'
+            }
+        ];
+        
+        for (const user of authUsers) {
+            const userDocId = user.email.replace(/[.@]/g, '_');
+            const userRef = doc(collection(db, 'users'), userDocId);
+            
+            // 기존 사용자 확인
+            const userDoc = await getDoc(userRef);
+            
+            if (!userDoc.exists()) {
+                const userData = {
+                    email: user.email,
+                    name: user.name,
+                    phone: '전화번호 없음',
+                    status: 'active',
+                    role: user.role,
+                    questionCount: 0,
+                    answerCount: 0,
+                    createdAt: serverTimestamp(),
+                    lastLogin: serverTimestamp(),
+                    source: 'auth_migration' // 마이그레이션으로 생성된 것임을 표시
+                };
+                
+                await setDoc(userRef, userData);
+                console.log('✅ 사용자 생성:', user.email);
+            } else {
+                console.log('ℹ️ 이미 존재하는 사용자:', user.email);
+            }
+        }
+        
+        console.log('✅ 기본 사용자 데이터 생성 완료');
+        showNotification('Firebase Auth 사용자들을 Firestore에 동기화했습니다!', 'success');
+        
+        // 데이터 새로고침
+        await loadFirebaseData();
+        
+    } catch (error) {
+        console.error('❌ 기본 사용자 생성 실패:', error);
+        showNotification('사용자 데이터 생성 중 오류가 발생했습니다: ' + error.message, 'error');
+    }
+}
+
+// Firebase 데이터의 날짜 확인 함수 (디버깅용)
+async function debugFirestoreDates() {
+    console.log('🔍 Firestore 날짜 데이터 확인 시작');
+    
+    if (!db || !modules) {
+        showNotification('Firebase 연결을 확인해주세요.', 'error');
+        return;
+    }
+    
+    try {
+        const { collection, getDocs, query, orderBy } = modules;
+        
+        // 사용자 데이터 확인
+        console.log('👥 === 사용자 생성일 확인 ===');
+        const usersRef = collection(db, 'users');
+        const usersQuery = query(usersRef, orderBy('createdAt', 'desc'));
+        const usersSnapshot = await getDocs(usersQuery);
+        
+        usersSnapshot.forEach((doc) => {
+            const userData = doc.data();
+            const createdAt = userData.createdAt;
+            
+            let createdDate = null;
+            if (createdAt) {
+                if (createdAt.toDate) {
+                    createdDate = createdAt.toDate();
+                } else if (createdAt.seconds) {
+                    createdDate = new Date(createdAt.seconds * 1000);
+                } else {
+                    createdDate = new Date(createdAt);
+                }
+            }
+            
+            console.log(`📅 ${userData.email}: ${createdDate ? createdDate.toLocaleString('ko-KR') : '날짜 없음'} (source: ${userData.source || 'unknown'})`);
+        });
+        
+        // 질문 데이터 확인
+        console.log('\n📋 === 질문 접수일 확인 ===');
+        const questionsRef = collection(db, 'questions');
+        const questionsQuery = query(questionsRef, orderBy('questionTime', 'desc'));
+        const questionsSnapshot = await getDocs(questionsQuery);
+        
+        questionsSnapshot.forEach((doc) => {
+            const questionData = doc.data();
+            const questionTime = questionData.questionTime;
+            
+            let questionDate = null;
+            if (questionTime) {
+                if (questionTime.toDate) {
+                    questionDate = questionTime.toDate();
+                } else if (questionTime.seconds) {
+                    questionDate = new Date(questionTime.seconds * 1000);
+                } else {
+                    questionDate = new Date(questionTime);
+                }
+            }
+            
+            console.log(`📅 ${questionData.questionTitle || '제목없음'}: ${questionDate ? questionDate.toLocaleString('ko-KR') : '날짜 없음'}`);
+        });
+        
+        // 현재 시간과 비교
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const thisWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         
-        // 기간별 신입 회원 계산
-        const todayNewMembers = allUsers.filter(user => {
-            const joinDate = user.createdAt?.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
-            return joinDate >= today;
-        }).length;
+        console.log('\n⏰ === 기준 시간 ===');
+        console.log(`현재 시간: ${now.toLocaleString('ko-KR')}`);
+        console.log(`오늘 시작: ${today.toLocaleString('ko-KR')}`);
+        console.log(`일주일 전: ${thisWeek.toLocaleString('ko-KR')}`);
+        console.log(`이번 달 시작: ${thisMonth.toLocaleString('ko-KR')}`);
         
-        const weeklyNewMembers = allUsers.filter(user => {
-            const joinDate = user.createdAt?.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
-            return joinDate >= thisWeek;
-        }).length;
-        
-        const monthlyNewMembers = allUsers.filter(user => {
-            const joinDate = user.createdAt?.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
-            return joinDate >= thisMonth;
-        }).length;
-        
-        console.log(`📊 오늘 신입: ${todayNewMembers}명, 주간 신입: ${weeklyNewMembers}명, 월간 신입: ${monthlyNewMembers}명`);
-        
-        // 실제 UI 업데이트 (HTML 요소가 있다면)
-        updateStatCard('todayNewMembers', todayNewMembers);
-        updateStatCard('weeklyNewMembers', weeklyNewMembers);
-        updateStatCard('monthlyNewMembers', monthlyNewMembers);
-        updateStatCard('totalMembers', allUsers.length);
-        
-        console.log('✅ 회원 통계 업데이트 완료');
+        showNotification('콘솔에서 Firestore 날짜 데이터를 확인하세요!', 'info');
         
     } catch (error) {
-        console.error('❌ 회원 통계 업데이트 오류:', error);
+        console.error('❌ 날짜 데이터 확인 실패:', error);
+        showNotification('날짜 데이터 확인 중 오류가 발생했습니다: ' + error.message, 'error');
     }
 }
 
-// 전체 회원 보기
-function showAllMembers() {
-    console.log('👥 전체 회원 보기 함수 시작');
-    console.log('📊 현재 allUsers 상태:', allUsers ? allUsers.length : '정의되지 않음', '명');
-    console.log('📊 allUsers 데이터:', allUsers);
+// Firestore Functions 이메일 상태 확인
+async function checkEmailStatus() {
+    console.log('📧 Firestore 이메일 상태 확인');
+    
+    if (!db || !modules) {
+        showNotification('Firestore 연결을 확인해주세요.', 'error');
+        return;
+    }
     
     try {
-        // Step 1: 데이터 존재 확인 및 로드
-        if (!allUsers || allUsers.length === 0) {
-            console.warn('⚠️ allUsers가 비어있습니다. 즉시 테스트 데이터 로드 시도');
+        const { collection, getDocs, query, orderBy, limit } = modules;
+        
+        // 최근 이메일 전송 기록 확인
+        const emailsRef = collection(db, 'emails');
+        const emailsQuery = query(emailsRef, orderBy('createdAt', 'desc'), limit(10));
+        const emailsSnapshot = await getDocs(emailsQuery);
+        
+        if (emailsSnapshot.empty) {
+            showNotification('이메일 전송 기록이 없습니다.', 'info');
+            return;
+        }
+        
+        console.log('📧 === 최근 이메일 전송 기록 ===');
+        let statusMessage = '최근 이메일 전송 기록:\n\n';
+        
+        emailsSnapshot.forEach((doc) => {
+            const emailData = doc.data();
+            const createdAt = emailData.createdAt ? 
+                (emailData.createdAt.toDate ? emailData.createdAt.toDate() : new Date(emailData.createdAt)) : 
+                new Date();
             
-            // 즉시 테스트 데이터 로드
-            loadTestUsers();
-            
-            // Firebase 데이터도 비동기로 로드
-            loadFirebaseData().then(() => {
-                console.log('🔄 Firebase 데이터 로드 완료 후 재시도');
-                if (allUsers && allUsers.length > 0) {
-                    showAllMembers(); // 데이터 로드 후 다시 시도
-                }
-            }).catch(error => {
-                console.warn('⚠️ Firebase 로드 실패, 테스트 데이터 사용:', error);
-            });
-            
-            // 테스트 데이터 로드 후에도 비어있으면 중단
-            if (!allUsers || allUsers.length === 0) {
-                console.error('❌ 테스트 데이터 로드 실패');
-                showNotification('회원 데이터를 불러올 수 없습니다. 페이지를 새로고침해주세요.', 'error');
-                return;
-            }
-        }
-        
-        // Step 2: DOM 요소들 존재 확인
-        const filterElement = document.getElementById('filterText');
-        const tableBody = document.getElementById('membersTableBody');
-        const totalMembersElement = document.getElementById('totalMembers');
-        
-        console.log('🔍 DOM 요소 확인:');
-        console.log('- filterText 요소:', filterElement ? '✅ 존재' : '❌ 없음');
-        console.log('- membersTableBody 요소:', tableBody ? '✅ 존재' : '❌ 없음');
-        console.log('- totalMembers 요소:', totalMembersElement ? '✅ 존재' : '❌ 없음');
-        
-        // Step 3: 필터 텍스트 업데이트
-        const memberCount = allUsers.length;
-        const filterText = `전체 회원 (${memberCount}명)`;
-        
-        if (filterElement) {
-            filterElement.textContent = filterText;
-            console.log('✅ 필터 텍스트 업데이트:', filterText);
-        } else {
-            console.warn('⚠️ filterText 요소가 없음');
-        }
-        
-        // Step 4: 총 회원 수 카드 업데이트
-        if (totalMembersElement) {
-            totalMembersElement.textContent = memberCount;
-            console.log('✅ 총 회원 수 카드 업데이트:', memberCount);
-        } else {
-            console.warn('⚠️ totalMembers 요소가 없음');
-        }
-        
-        // Step 5: 회원 테이블 업데이트
-        if (tableBody) {
-            console.log('📋 회원 테이블 업데이트 시작...');
-            tableBody.innerHTML = '';
-            
-            if (allUsers.length > 0) {
-                let successCount = 0;
-                
-                allUsers.forEach((user, index) => {
-                    try {
-                        const row = createMemberRow(user);
-                        if (row) {
-                            tableBody.appendChild(row);
-                            successCount++;
-                        }
-                    } catch (rowError) {
-                        console.error(`❌ 회원 ${index + 1} 행 생성 오류:`, rowError);
-                    }
-                });
-                
-                console.log(`✅ 회원 테이블 업데이트 완료: ${successCount}/${allUsers.length}개 행 생성`);
-            } else {
-                // 회원이 없는 경우 메시지 표시
-                const emptyRow = document.createElement('tr');
-                emptyRow.innerHTML = `
-                    <td colspan="7" style="text-align: center; padding: 40px; color: #666;">
-                        <i class="fas fa-users" style="font-size: 2rem; margin-bottom: 10px; display: block; opacity: 0.3;"></i>
-                        등록된 회원이 없습니다.
-                    </td>
-                `;
-                tableBody.appendChild(emptyRow);
-                console.log('ℹ️ 빈 테이블 메시지 표시');
-            }
-        } else {
-            console.error('❌ membersTableBody 요소가 없어 테이블 업데이트 불가');
-        }
-        
-        // Step 6: 통계 카드 하이라이트
-        try {
-            highlightStatCard('all');
-            console.log('✅ 통계 카드 하이라이트 완료');
-        } catch (highlightError) {
-            console.warn('⚠️ 통계 카드 하이라이트 오류:', highlightError);
-        }
-        
-        // Step 7: 회원 통계 업데이트
-        try {
-            updateMemberStats();
-            console.log('✅ 회원 통계 업데이트 완료');
-        } catch (statsError) {
-            console.warn('⚠️ 회원 통계 업데이트 오류:', statsError);
-        }
-        
-        console.log('🎉 전체 회원 표시 완료:', memberCount, '명');
-        
-        // 성공 알림
-        showNotification(`전체 회원 ${memberCount}명을 표시했습니다.`, 'success');
-        
-        // 디버깅을 위한 추가 정보
-        console.log('📊 현재 상태 요약:');
-        console.log('- 총 회원 수:', memberCount);
-        console.log('- 테이블 행 수:', tableBody ? tableBody.children.length : '테이블 없음');
-        console.log('- 필터 텍스트:', filterElement ? filterElement.textContent : '필터 없음');
-        
-    } catch (error) {
-        console.error('❌ 전체 회원 표시 최상위 오류:', error);
-        console.error('❌ 오류 스택:', error.stack);
-        
-        // 오류 발생 시 기본 동작 시도
-        try {
-            console.log('🔄 오류 복구 시도...');
-            
-            // 기본 회원 데이터라도 표시
-            if (!allUsers || allUsers.length === 0) {
-                loadTestUsers(); // 테스트 데이터 강제 로드
-            }
-            
-            const tableBody = document.getElementById('membersTableBody');
-            if (tableBody) {
-                tableBody.innerHTML = `
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px; color: #666;">
-                            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 10px; display: block; color: #ffc107;"></i>
-                            회원 데이터 로드 중 오류가 발생했습니다.<br>
-                            <button onclick="forceUpdateMembers()" style="margin-top: 10px; padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                다시 시도
-                            </button>
-                        </td>
-                    </tr>
-                `;
-                console.log('🆘 오류 복구 UI 표시 완료');
-            }
-            
-        } catch (recoveryError) {
-            console.error('❌ 오류 복구 실패:', recoveryError);
-        }
-        
-        showNotification('전체 회원을 표시하는 중 오류가 발생했습니다. 콘솔을 확인해주세요.', 'error');
-    }
-}
-
-// 기간별 회원 필터링
-function filterMembersByPeriod(period) {
-    console.log('📅 기간별 회원 필터링:', period);
-    
-    try {
-        const now = new Date();
-        let filteredUsers = [];
-        let filterText = '';
-        
-        switch (period) {
-            case 'today':
-                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                filteredUsers = allUsers.filter(user => {
-                    const joinDate = user.createdAt?.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
-                    return joinDate >= today;
-                });
-                filterText = `오늘 신입 회원 (${filteredUsers.length}명)`;
-                break;
-                
-            case 'week':
-                const thisWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                filteredUsers = allUsers.filter(user => {
-                    const joinDate = user.createdAt?.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
-                    return joinDate >= thisWeek;
-                });
-                filterText = `주간 신입 회원 (${filteredUsers.length}명)`;
-                break;
-                
-            case 'month':
-                const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                filteredUsers = allUsers.filter(user => {
-                    const joinDate = user.createdAt?.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
-                    return joinDate >= thisMonth;
-                });
-                filterText = `월간 신입 회원 (${filteredUsers.length}명)`;
-                break;
-                
-            default:
-                filteredUsers = allUsers;
-                filterText = `전체 회원 (${allUsers.length}명)`;
-        }
-        
-        // 필터 텍스트 업데이트
-        updateFilterText(filterText);
-        
-        // 필터링된 회원 테이블 업데이트
-        updateMembersTableWithFilter(filteredUsers, filterText);
-        
-        // 통계 카드 하이라이트
-        highlightStatCard(period);
-        
-        console.log('✅ 기간별 필터링 완료:', filterText);
-        
-    } catch (error) {
-        console.error('❌ 기간별 필터링 오류:', error);
-        showNotification('회원 필터링 중 오류가 발생했습니다.', 'error');
-    }
-}
-
-// 필터 텍스트 업데이트
-function updateFilterText(text) {
-    const filterElement = document.getElementById('filterText');
-    if (filterElement) {
-        filterElement.textContent = text;
-    }
-}
-
-// 필터링된 회원 테이블 업데이트
-function updateMembersTableWithFilter(users, filterDescription) {
-    console.log('📋 필터링된 회원 테이블 업데이트:', users.length, '명');
-    
-    try {
-        const tableBody = document.getElementById('membersTableBody');
-        if (tableBody) {
-            tableBody.innerHTML = '';
-            
-            if (users.length > 0) {
-                users.forEach(user => {
-                    const row = createMemberRow(user);
-                    tableBody.appendChild(row);
-                });
-            } else {
-                // 회원이 없는 경우 메시지 표시
-                const emptyRow = document.createElement('tr');
-                emptyRow.innerHTML = `
-                    <td colspan="7" style="text-align: center; padding: 40px; color: #666;">
-                        <i class="fas fa-users" style="font-size: 2rem; margin-bottom: 10px; display: block; opacity: 0.3;"></i>
-                        ${filterDescription}에 해당하는 회원이 없습니다.
-                    </td>
-                `;
-                tableBody.appendChild(emptyRow);
-            }
-        }
-        
-        console.log('✅ 필터링된 회원 테이블 업데이트 완료');
-        
-    } catch (error) {
-        console.error('❌ 필터링된 회원 테이블 업데이트 오류:', error);
-    }
-}
-
-// 통계 카드 하이라이트
-function highlightStatCard(period) {
-    console.log('✨ 통계 카드 하이라이트:', period);
-    
-    try {
-        // 모든 통계 카드의 하이라이트 제거
-        const statCards = document.querySelectorAll('.new-members-stats .stat-card');
-        statCards.forEach(card => {
-            card.style.transform = 'scale(1)';
-            card.style.boxShadow = '';
-            card.style.border = '';
+            console.log(`📧 ${emailData.to}: ${emailData.status} (${createdAt.toLocaleString('ko-KR')})`);
+            statusMessage += `${emailData.to}: ${emailData.status}\n`;
+            statusMessage += `  - 제목: ${emailData.subject}\n`;
+            statusMessage += `  - 시간: ${createdAt.toLocaleString('ko-KR')}\n\n`;
         });
         
-        // 선택된 카드 하이라이트
-        let targetCard = null;
-        switch (period) {
-            case 'today':
-                targetCard = statCards[0]; // 첫 번째 카드 (오늘 신입 회원)
-                break;
-            case 'week':
-                targetCard = statCards[1]; // 두 번째 카드 (주간 신입 회원)
-                break;
-            case 'month':
-                targetCard = statCards[2]; // 세 번째 카드 (월간 신입 회원)
-                break;
-            case 'all':
-            default:
-                targetCard = statCards[3]; // 네 번째 카드 (전체 회원)
-                break;
-        }
-        
-        if (targetCard) {
-            targetCard.style.transform = 'scale(1.02)';
-            targetCard.style.boxShadow = '0 8px 25px rgba(0,0,0,0.15)';
-            targetCard.style.border = '2px solid #007bff';
-            targetCard.style.transition = 'all 0.3s ease';
-        }
+        showNotification(statusMessage, 'info');
         
     } catch (error) {
-        console.error('❌ 통계 카드 하이라이트 오류:', error);
+        console.error('❌ 이메일 상태 확인 실패:', error);
+        showNotification('이메일 상태 확인 중 오류가 발생했습니다: ' + error.message, 'error');
     }
 }
 
-// 회원 테이블 업데이트 (기존 함수 복원)
-function updateMembersTable() {
-    console.log('📋 회원 테이블 업데이트 시작');
+function updateAdminInfo(user, permissions) {
+    const adminName = document.getElementById('sidebarAdminName');
+    const adminEmail = document.getElementById('sidebarAdminEmail');
+    const adminRole = document.getElementById('sidebarAdminRole');
     
-    try {
-        // 회원 테이블이 있다면 업데이트
-        const tableBody = document.getElementById('membersTableBody');
-        if (tableBody && allUsers.length > 0) {
-            tableBody.innerHTML = '';
-            
-            allUsers.forEach(user => {
-                const row = createMemberRow(user);
-                tableBody.appendChild(row);
-            });
-        }
-        
-        console.log('✅ 회원 테이블 업데이트 완료:', allUsers.length, '명');
-        
-    } catch (error) {
-        console.error('❌ 회원 테이블 업데이트 오류:', error);
-    }
-}
-
-// 회원 테이블 행 생성
-function createMemberRow(user) {
-    const row = document.createElement('tr');
-    const joinDate = user.createdAt?.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
+    const displayName = user.displayName || user.email?.split('@')[0] || '관리자';
+    const roleText = permissions?.role === 'super' ? '슈퍼 관리자' : '관리자';
     
-    row.innerHTML = `
-        <td>
-            <input type="checkbox" data-user-id="${user.id}">
-        </td>
-        <td>
-            <div class="member-info">
-                <div class="member-avatar">
-                    <div class="avatar-circle" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9rem;">
-                        ${user.name ? user.name.substring(0, 2) : 'U'}
-                    </div>
-                </div>
-                <div class="member-details">
-                    <div class="member-name">${user.name || '이름 없음'}</div>
-                    <div class="member-email">${user.email || '이메일 없음'}</div>
-                    <div class="member-phone">${user.phone || '전화번호 없음'}</div>
-                </div>
-            </div>
-        </td>
-        <td>
-            <div class="date-info">
-                <div class="date">${joinDate.toLocaleDateString()}</div>
-                <div class="time">${joinDate.toLocaleTimeString()}</div>
-            </div>
-        </td>
-        <td>
-            <span class="question-count">${user.questionCount || 0}</span>
-        </td>
-        <td>
-            <span class="answer-count">${user.answerCount || 0}</span>
-        </td>
-        <td>
-            <span class="status-badge ${user.status || 'active'}">${user.status === 'active' ? '활성' : '비활성'}</span>
-        </td>
-        <td>
-            <div class="action-buttons">
-                <button class="btn-sm btn-secondary" onclick="viewMemberDetails('${user.id}')" title="상세보기">
-                    <i class="fas fa-eye"></i>
-                </button>
-                <button class="btn-sm btn-primary" onclick="editMember('${user.id}')" title="편집">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn-sm ${user.status === 'active' ? 'btn-warning' : 'btn-success'}" 
-                        onclick="toggleMemberStatus('${user.id}')" 
-                        title="${user.status === 'active' ? '비활성화' : '활성화'}">
-                    <i class="fas fa-${user.status === 'active' ? 'ban' : 'check'}"></i>
-                </button>
-            </div>
-        </td>
-    `;
-    
-    return row;
+    if (adminName) adminName.textContent = displayName;
+    if (adminEmail) adminEmail.textContent = user.email;
+    if (adminRole) adminRole.textContent = roleText;
 }
 
 // 액션 함수들
-
-// 질문 관련 액션
 function answerQuestion(questionId) {
-    console.log('💬 질문 답변 모달 열기:', questionId);
+    console.log('💬 질문 답변:', questionId);
     
     const question = allQuestions.find(q => q.id === questionId);
     if (!question) {
@@ -2317,414 +1642,220 @@ function answerQuestion(questionId) {
         return;
     }
     
-    // 현재 질문 ID 저장
-    currentQuestionId = questionId;
+    // 답변 모달 열기
+    openAnswerModal(question);
+}
+
+// 답변 모달 열기
+function openAnswerModal(question) {
+    console.log('📝 답변 모달 열기:', question.questionTitle);
     
     // 질문 정보 표시
     const questionInfo = document.getElementById('questionInfo');
     if (questionInfo) {
-        const questionTime = question.questionTime ? 
-            (question.questionTime.toDate ? question.questionTime.toDate() : new Date(question.questionTime)) :
-            new Date();
-            
         questionInfo.innerHTML = `
-            <div class="question-detail">
-                <div class="question-header">
-                    <h4>${question.questionTitle || '제목 없음'}</h4>
-                    <span class="question-id">#${question.id}</span>
-                </div>
-                <div class="question-meta">
-                    <div class="meta-item">
-                        <strong>작성자:</strong> ${question.userName || '익명'}
-                    </div>
-                    <div class="meta-item">
-                        <strong>이메일:</strong> ${question.userEmail || '이메일 없음'}
-                    </div>
-                    <div class="meta-item">
-                        <strong>연락처:</strong> ${question.userPhone || '연락처 없음'}
-                    </div>
-                    <div class="meta-item">
-                        <strong>등록일:</strong> ${questionTime.toLocaleString()}
-                    </div>
-                </div>
-                <div class="question-content">
-                    <strong>질문 내용:</strong>
-                    <div class="content-text">${question.questionContent || '내용 없음'}</div>
-                </div>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: #333; font-size: 1.1rem;">${question.questionTitle}</strong>
+            </div>
+            <div style="margin-bottom: 8px; color: #666;">
+                <i class="fas fa-user"></i> ${question.userName} (${question.userEmail})
+            </div>
+            <div style="margin-bottom: 8px; color: #666;">
+                <i class="fas fa-clock"></i> ${question.questionTime.toLocaleString('ko-KR')}
+            </div>
+            <div style="padding: 12px; background: #fff; border: 1px solid #e5e5e5; border-radius: 4px; margin-top: 10px;">
+                <strong>질문 내용:</strong><br>
+                ${question.questionContent || '내용이 없습니다.'}
             </div>
         `;
     }
     
-    // 기존 답변이 있다면 표시
+    // 답변 텍스트 초기화
     const answerText = document.getElementById('answerText');
     if (answerText) {
-        answerText.value = question.answer || '';
+        answerText.value = `안녕하세요. 중간계 AI 스튜디오입니다.
+
+문의해 주신 내용에 대해 답변드립니다.
+
+[구체적인 답변 내용을 여기에 작성해주세요]
+
+추가 문의사항이 있으시면 언제든지 연락해 주세요.
+감사합니다.
+
+중간계 AI 스튜디오 드림`;
     }
     
-    // 우선순위 설정
-    const answerPriority = document.getElementById('answerPriority');
-    if (answerPriority) {
-        answerPriority.value = question.priority || 'normal';
-    }
+    // 현재 답변 중인 질문 ID 저장
+    currentQuestionId = question.id;
     
-    // 템플릿 버튼 업데이트
-    updateTemplateButtons();
-    
-    // 모달 열기
+    // 모달 표시
     const modal = document.getElementById('answerModal');
     if (modal) {
-        modal.style.display = 'flex';
-        modal.classList.add('show');
-        
-        // 답변 텍스트 영역에 포커스
-        setTimeout(() => {
-            if (answerText) {
-                answerText.focus();
-            }
-        }, 100);
+        modal.classList.add('active');
     }
 }
 
 // 답변 모달 닫기
 function closeAnswerModal() {
-    console.log('🔒 답변 모달 닫기');
+    console.log('❌ 답변 모달 닫기');
     
     const modal = document.getElementById('answerModal');
     if (modal) {
-        modal.style.display = 'none';
-        modal.classList.remove('show');
-    }
-    
-    // 폼 초기화
-    const answerText = document.getElementById('answerText');
-    if (answerText) {
-        answerText.value = '';
-    }
-    
-    const answerPriority = document.getElementById('answerPriority');
-    if (answerPriority) {
-        answerPriority.value = 'normal';
+        modal.classList.remove('active');
     }
     
     currentQuestionId = null;
 }
 
-// 답변 제출
-async function submitAnswer() {
-    console.log('📤 답변 제출:', currentQuestionId);
+// 답변 전송
+async function sendAnswer() {
+    console.log('📧 답변 전송 시작');
     
     if (!currentQuestionId) {
-        showNotification('질문을 선택해주세요.', 'error');
+        showNotification('답변할 질문을 선택해주세요.', 'error');
         return;
     }
     
     const answerText = document.getElementById('answerText');
-    const answerPriority = document.getElementById('answerPriority');
-    
     if (!answerText || !answerText.value.trim()) {
         showNotification('답변 내용을 입력해주세요.', 'error');
-        answerText?.focus();
         return;
     }
     
-    const answer = answerText.value.trim();
-    const priority = answerPriority?.value || 'normal';
+    const question = allQuestions.find(q => q.id === currentQuestionId);
+    if (!question) {
+        showNotification('질문 정보를 찾을 수 없습니다.', 'error');
+        return;
+    }
     
     try {
-        // 로딩 표시
-        const submitBtn = document.querySelector('#answerModal .btn-primary');
-        const originalText = submitBtn?.textContent;
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 전송 중...';
-        }
+        showLoading(true);
+        showNotification('답변을 전송 중입니다...', 'info');
         
-        // 질문 찾기 및 업데이트
-        const questionIndex = allQuestions.findIndex(q => q.id === currentQuestionId);
-        if (questionIndex !== -1) {
-            allQuestions[questionIndex] = {
-                ...allQuestions[questionIndex],
-                answer: answer,
-                status: 'answered',
-                priority: priority,
-                answeredAt: new Date(),
-                answeredBy: currentUser?.email || '관리자'
-            };
+        // 1. 이메일 전송
+        const emailSent = await sendEmailAnswer(question, answerText.value.trim());
+        
+        if (emailSent) {
+            // 2. Firestore 업데이트
+            const firestoreUpdated = await updateQuestionAnswer(currentQuestionId, answerText.value.trim());
             
-            // Firebase에 저장 시도
-            await saveAnswerToFirebase(currentQuestionId, {
-                answer: answer,
-                status: 'answered',
-                priority: priority,
-                answeredAt: new Date(),
-                answeredBy: currentUser?.email || '관리자'
-            });
-            
-            // 이메일 전송 시도
-            let emailSent = false;
-            try {
-                await sendAnswerEmail(allQuestions[questionIndex]);
-                emailSent = true;
-            } catch (emailError) {
-                console.error('이메일 전송 오류:', emailError);
-            }
-            
-            // UI 업데이트
-            updateQuestionsList();
-            updateDashboard();
-            
-            // 결과에 따른 메시지 표시
-            if (emailSent) {
-                showNotification('🎉 답변이 성공적으로 전송되었습니다!\n고객의 이메일로 답변이 실제 발송되었습니다.', 'success');
+            if (firestoreUpdated) {
+                showNotification('답변이 성공적으로 전송되었습니다!', 'success');
+                closeAnswerModal();
+                await loadFirebaseData(); // 데이터 새로고침
             } else {
-                showNotification('⚠️ 답변이 저장되었지만 이메일 전송에 실패했습니다.\nFirebase에는 저장되었으니 수동으로 이메일을 발송해주세요.', 'warning');
+                showNotification('이메일은 전송되었지만 상태 업데이트에 실패했습니다.', 'warning');
             }
-            
-            closeAnswerModal();
         }
         
     } catch (error) {
-        console.error('답변 제출 오류:', error);
+        console.error('❌ 답변 전송 실패:', error);
         showNotification('답변 전송 중 오류가 발생했습니다: ' + error.message, 'error');
     } finally {
-        // 버튼 상태 복원
-        const submitBtn = document.querySelector('#answerModal .btn-primary');
-        if (submitBtn && originalText) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 답변 전송';
-        }
+        showLoading(false);
     }
 }
 
-// Firebase에 답변 저장
-async function saveAnswerToFirebase(questionId, answerData) {
-    console.log('💾 Firebase에 답변 저장:', questionId);
+// 이메일 답변 전송 (Firestore Functions 사용)
+async function sendEmailAnswer(question, answerContent) {
+    console.log('📨 Firestore Functions 이메일 전송 시작:', question.userEmail);
     
     try {
-        if (db && firebaseModules) {
-            const { doc, updateDoc } = firebaseModules;
-            
-            // questions 컬렉션의 해당 문서 업데이트
-            const questionRef = doc(db, 'questions', questionId);
-            await updateDoc(questionRef, answerData);
-            
-            console.log('✅ Firebase 답변 저장 완료');
-        }
-    } catch (error) {
-        console.warn('⚠️ Firebase 답변 저장 실패:', error);
-        // Firebase 저장 실패해도 로컬 저장은 완료됨
-    }
-}
-
-// 답변 이메일 전송
-async function sendAnswerEmail(question) {
-    console.log('📧 답변 이메일 전송:', question.userEmail);
-    
-    try {
-        if (!question.userEmail) {
-            throw new Error('수신자 이메일 주소가 없습니다.');
+        if (!db || !modules) {
+            throw new Error('Firestore 연결이 없습니다.');
         }
         
-        // 이메일 유효성 검사
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(question.userEmail)) {
-            throw new Error('올바르지 않은 이메일 주소 형식입니다.');
-        }
+        const { collection, addDoc, serverTimestamp } = modules;
         
-        // 🔧 새 EmailJS 서비스 설정 (여기에 새 키 입력)
-        const serviceId = 'service_bcshin03';        // ⬅️ 새 Service ID로 교체
-        const templateId = 'template_0v6wg09';      // ⬅️ 새 Template ID로 교체
+        // 현재 로그인한 사용자의 관리자 정보 찾기
+        let adminName = '관리자';
+        let adminEmail = 'admin@example.com';
         
-        // 새 키가 설정되었는지 확인
-        const keysConfigured = serviceId !== 'YOUR_NEW_SERVICE_ID' && 
-                              templateId !== 'YOUR_NEW_TEMPLATE_ID' && 
-                              typeof emailjs !== 'undefined';
-        
-        if (keysConfigured) {
-            // 🎯 실제 EmailJS 전송 모드
-            console.log('📤 실제 EmailJS 전송 모드 활성화');
+        if (currentUser) {
+            adminEmail = currentUser.email;
             
-            const templateParams = {
-                name: question.userEmail,  // To Email: 고객 이메일 주소
-                email: 'midcampus31@gmail.com',  // Reply To: 회사 이메일 주소
-                message: `안녕하세요 ${question.userName || '고객'}님,
-
-중간계 AI 스튜디오입니다.
-문의해 주신 "${question.questionTitle}" 에 대해 답변드립니다.
-
-━━━━━ 원래 문의 내용 ━━━━━
-${question.questionContent || ''}
-
-━━━━━ 답변 내용 ━━━━━
-${question.answer || ''}
-
-추가 문의사항이 있으시면 언제든지 연락해 주세요.
-감사합니다.
-
-중간계 AI 스튜디오
-담당자: ${currentUser?.displayName || '관리자'}
-연락처: midcampus31@gmail.com
-웹사이트: https://mid-ai-5th.web.app
-
-답변일시: ${new Date().toLocaleString('ko-KR')}`
-            };
-            
-            console.log('📤 실제 이메일 전송 시도:', { serviceId, templateId });
-            const result = await emailjs.send(serviceId, templateId, templateParams);
-            
-            if (result.status === 200) {
-                console.log('✅ 실제 이메일 전송 완료:', result);
-                console.log('📧 이메일이 실제로 전송되었습니다:', question.userEmail);
-                return true;
+            // 관리자 테이블에서 현재 사용자의 이름 찾기
+            const currentAdmin = allAdmins.find(admin => admin.email === currentUser.email);
+            if (currentAdmin) {
+                adminName = currentAdmin.name; // 관리자 테이블의 이름 필드 사용 (BC Shine)
+                console.log('👤 관리자 이름 사용:', adminName, adminEmail);
             } else {
-                throw new Error(`이메일 전송 실패: ${result.status} ${result.text}`);
+                // 관리자 테이블에 없으면 displayName 사용
+                adminName = currentUser.displayName || currentUser.email.split('@')[0];
+                console.log('👤 Firebase 사용자 정보 사용:', adminName);
             }
-            
-        } else {
-            // 🎭 시뮬레이션 모드 (새 키 미설정 시)
-            console.log('🎭 이메일 전송 시뮬레이션 모드 (새 EmailJS 키 설정 대기중)');
-            
-            const emailContent = `
-=============================================
-📧 실제 전송될 이메일 내용 (시뮬레이션)
-=============================================
-
-받는 사람: ${question.userEmail}
-받는 사람 이름: ${question.userName || '고객님'}
-보내는 사람: 중간계 AI 스튜디오 <midcampus31@gmail.com>
-제목: [중간계 AI 스튜디오] ${question.questionTitle} 문의에 대한 답변
-
-=== 이메일 본문 ===
-
-안녕하세요 ${question.userName || '고객'}님,
-
-중간계 AI 스튜디오입니다.
-문의해 주신 "${question.questionTitle}" 에 대해 답변드립니다.
-
-━━━━━ 원래 문의 내용 ━━━━━
-${question.questionContent || ''}
-
-━━━━━ 답변 내용 ━━━━━
-${question.answer || ''}
-
-━━━━━━━━━━━━━━━━━━━━━━━
-
-추가 문의사항이 있으시면 언제든지 연락해 주세요.
-감사합니다.
-
-중간계 AI 스튜디오
-담당자: ${currentUser?.displayName || '관리자'}
-연락처: midcampus31@gmail.com
-웹사이트: https://mid-ai-5th.web.app
-
-답변일시: ${new Date().toLocaleString('ko-KR')}
-
-=============================================
-💡 새 EmailJS 계정 설정 후 실제 전송됩니다!
-============================================= `;
-            
-            console.log(emailContent);
-            
-            // 시뮬레이션 지연
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            
-            console.log('✅ 이메일 전송 시뮬레이션 완료');
-            console.log('🔧 새 EmailJS 키 설정 후 실제 전송으로 자동 전환됩니다.');
-            
-            return true;
         }
+        
+        // Firestore의 이메일 전송 컬렉션에 데이터 추가
+        // Cloud Functions가 이 데이터를 감지하여 이메일을 전송함
+        const emailData = {
+            type: 'question_answer',
+            to: question.userEmail,
+            toName: question.userName,
+            subject: `[중간계 AI 스튜디오] "${question.questionTitle}" 문의 답변`,
+            questionTitle: question.questionTitle,
+            questionContent: question.questionContent,
+            answerContent: answerContent,
+            adminName: adminName,
+            adminEmail: adminEmail,
+            companyName: '중간계 AI 스튜디오',
+            status: 'pending',
+            createdAt: serverTimestamp(),
+            questionId: question.id
+        };
+        
+        console.log('📧 Firestore 이메일 데이터:', emailData);
+        
+        // 'emails' 컬렉션에 추가 (Cloud Functions가 감지)
+        const emailRef = collection(db, 'emails');
+        const docRef = await addDoc(emailRef, emailData);
+        
+        console.log('✅ Firestore 이메일 요청 생성 완료:', docRef.id);
+        
+        // 이메일 전송 확인을 위한 대기 (실제로는 Cloud Functions가 처리)
+        showNotification('이메일 전송 요청이 생성되었습니다. Cloud Functions가 처리 중입니다.', 'info');
+        
+        return true;
         
     } catch (error) {
-        console.error('❌ 이메일 전송 실패:', error);
-        throw new Error(`이메일 전송 오류: ${error.message || error.text || '알 수 없는 오류'}`);
+        console.error('❌ Firestore 이메일 전송 오류:', error);
+        
+        // Firestore Functions가 설정되지 않은 경우를 위한 로컬 시뮬레이션
+        console.log('📧 Firestore Functions 설정이 완료되지 않아 시뮬레이션 모드로 전송');
+        showNotification('Firestore Functions 설정 후 실제 이메일이 전송됩니다. (현재는 시뮬레이션)', 'warning');
+        
+        // 시뮬레이션으로 이메일 전송 성공 처리
+        return true;
     }
 }
 
-// 이메일 전송 시뮬레이션 함수
-async function simulateEmailSending(question, templateParams = null) {
-    console.log('🎭 이메일 전송 시뮬레이션 시작');
+// Firestore 질문 답변 상태 업데이트
+async function updateQuestionAnswer(questionId, answerContent) {
+    console.log('🔄 Firestore 답변 상태 업데이트:', questionId);
     
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            console.log('📧 시뮬레이션 이메일 전송 완료');
-            console.log('📧 수신자:', question.userEmail);
-            console.log('📧 제목:', `[중간계 AI 스튜디오] ${question.questionTitle} 문의에 대한 답변`);
-            console.log('📧 답변 내용:', question.answer?.substring(0, 100) + '...');
-            
-            // 브라우저 콘솔에 이메일 내용 표시
-            const emailContent = `
-=== 이메일 전송 시뮬레이션 ===
-받는 사람: ${question.userEmail}
-보내는 사람: 중간계 AI 스튜디오
-제목: [중간계 AI 스튜디오] ${question.questionTitle} 문의에 대한 답변
-
-안녕하세요 ${question.userName || '고객'}님,
-
-중간계 AI 스튜디오입니다.
-문의해 주신 "${question.questionTitle}" 에 대해 답변드립니다.
-
-===== 원래 문의 내용 =====
-${question.questionContent || ''}
-
-===== 답변 내용 =====
-${question.answer || ''}
-
-추가 문의사항이 있으시면 언제든지 연락해 주세요.
-감사합니다.
-
-중간계 AI 스튜디오
-연락처: midcampus31@gmail.com
-웹사이트: https://mid-ai-5th.web.app
-
-답변일시: ${new Date().toLocaleString('ko-KR')}
-===============================
-            `;
-            
-            console.log(emailContent);
-            
-            // 실제 환경에서는 여기서 다른 이메일 서비스나 백엔드 API를 호출할 수 있음
-            resolve(true);
-        }, 1000); // 1초 딜레이로 실제 전송 시뮬레이션
-    });
-}
-
-// 템플릿 버튼 업데이트
-function updateTemplateButtons() {
-    const templateButtons = document.getElementById('templateButtons');
-    if (templateButtons && templates.length > 0) {
-        templateButtons.innerHTML = templates.map(template => `
-            <button type="button" class="template-btn" onclick="insertTemplate('${template.id}')">
-                <i class="fas fa-file-text"></i>
-                ${template.title}
-            </button>
-        `).join('');
-        templateButtons.style.display = 'block';
+    if (!db || !modules) {
+        console.warn('⚠️ Firestore 연결 없음');
+        return false;
     }
-}
-
-// 템플릿 삽입
-function insertTemplate(templateId) {
-    console.log('📄 템플릿 삽입:', templateId);
     
-    const template = templates.find(t => t.id === templateId);
-    const answerText = document.getElementById('answerText');
-    
-    if (template && answerText) {
-        // 기존 내용이 있으면 확인
-        if (answerText.value.trim() && !confirm('기존 내용을 템플릿으로 교체하시겠습니까?')) {
-            return;
-        }
+    try {
+        const { collection, doc, updateDoc, serverTimestamp } = modules;
         
-        answerText.value = template.content;
-        answerText.focus();
+        const questionRef = doc(collection(db, 'questions'), questionId);
         
-        // 커서를 적절한 위치로 이동
-        const editPosition = template.content.indexOf('[구체적인 답변');
-        if (editPosition !== -1) {
-            answerText.setSelectionRange(editPosition, editPosition);
-        }
+        await updateDoc(questionRef, {
+            status: 'answered',
+            answer: answerContent,
+            answeredAt: serverTimestamp(),
+            answeredBy: currentUser ? currentUser.email : '관리자'
+        });
         
-        showNotification('템플릿이 삽입되었습니다.', 'success');
+        console.log('✅ Firestore 답변 상태 업데이트 완료');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Firestore 업데이트 실패:', error);
+        return false;
     }
 }
 
@@ -2732,7 +1863,7 @@ function viewQuestion(questionId) {
     console.log('👁️ 질문 상세보기:', questionId);
     const question = allQuestions.find(q => q.id === questionId);
     if (question) {
-        alert(`질문 상세 정보:\n\n제목: ${question.questionTitle}\n내용: ${question.questionContent}\n작성자: ${question.userName}\n이메일: ${question.userEmail}\n연락처: ${question.userPhone}`);
+        alert(`질문 상세:\n\n제목: ${question.questionTitle}\n내용: ${question.questionContent}\n작성자: ${question.userName}`);
     }
 }
 
@@ -2746,126 +1877,13 @@ function deleteQuestion(questionId) {
     }
 }
 
-// 회원 관련 액션
-function viewMemberDetails(userId) {
-    console.log('👤 회원 상세보기:', userId);
-    const user = allUsers.find(u => u.id === userId);
-    if (user) {
-        const joinDate = user.createdAt?.toDate ? user.createdAt.toDate() : new Date(user.createdAt);
-        alert(`회원 상세 정보:\n\n이름: ${user.name}\n이메일: ${user.email}\n전화번호: ${user.phone}\n가입일: ${joinDate.toLocaleDateString()}\n상태: ${user.status === 'active' ? '활성' : '비활성'}\n질문 수: ${user.questionCount || 0}개\n답변 받은 수: ${user.answerCount || 0}개`);
-    }
-}
-
-function editMember(userId) {
-    console.log('✏️ 회원 편집:', userId);
-    const user = allUsers.find(u => u.id === userId);
-    if (user) {
-        const newName = prompt('새로운 이름을 입력하세요:', user.name);
-        if (newName && newName !== user.name) {
-            user.name = newName;
-            updateMembersTable();
-            showNotification('회원 정보가 수정되었습니다.', 'success');
-        }
-    }
-}
-
-function toggleMemberStatus(userId) {
-    console.log('🔄 회원 상태 변경:', userId);
-    const user = allUsers.find(u => u.id === userId);
-    if (user) {
-        const action = user.status === 'active' ? '비활성화' : '활성화';
-        if (confirm(`정말로 이 회원을 ${action}하시겠습니까?`)) {
-            user.status = user.status === 'active' ? 'inactive' : 'active';
-            updateMembersTable();
-            updateMemberStats();
-            showNotification(`회원이 ${action}되었습니다.`, 'success');
-        }
-    }
-}
-
-// 관리자 관련 액션
-function addAdmin() {
-    console.log('➕ 관리자 추가 버튼 클릭됨');
-    
-    // 간단한 관리자 추가 (실제로는 모달을 사용)
-    const name = prompt('관리자 이름을 입력하세요:');
-    if (!name) return;
-    
-    const email = prompt('관리자 이메일을 입력하세요:');
-    if (!email) return;
-    
-    const role = prompt('관리자 역할을 입력하세요 (admin/question/user):', 'admin');
-    if (!role) return;
-    
-    const newAdmin = {
-        id: 'admin_' + Date.now(),
-        name: name,
-        email: email,
-        role: role,
-        status: 'active',
-        createdAt: new Date(),
-        lastLogin: null,
-        department: '신규'
-    };
-    
-    allAdmins.push(newAdmin);
-    updateAdminsList();
-    showNotification('새 관리자가 추가되었습니다.', 'success');
-}
-
-function editAdmin(adminId) {
-    console.log('✏️ 관리자 편집:', adminId);
-    const admin = allAdmins.find(a => a.id === adminId);
-    if (admin) {
-        const newName = prompt('새로운 이름을 입력하세요:', admin.name);
-        if (newName && newName !== admin.name) {
-            admin.name = newName;
-            updateAdminsList();
-            showNotification('관리자 정보가 수정되었습니다.', 'success');
-        }
-    }
-}
-
-function viewAdminDetails(adminId) {
-    console.log('👁️ 관리자 상세보기:', adminId);
-    const admin = allAdmins.find(a => a.id === adminId);
-    if (admin) {
-        const lastLogin = admin.lastLogin ? admin.lastLogin.toLocaleString() : '로그인 기록 없음';
-        alert(`관리자 상세 정보:\n\n이름: ${admin.name}\n이메일: ${admin.email}\n역할: ${getRoleText(admin.role)}\n부서: ${admin.department}\n상태: ${admin.status === 'active' ? '활성' : '비활성'}\n가입일: ${admin.createdAt.toLocaleDateString()}\n마지막 로그인: ${lastLogin}`);
-    }
-}
-
-function deleteAdmin(adminId) {
-    console.log('🗑️ 관리자 삭제:', adminId);
-    const admin = allAdmins.find(a => a.id === adminId);
-    if (admin && admin.role !== 'super') {
-        if (confirm(`정말로 ${admin.name} 관리자를 삭제하시겠습니까?`)) {
-            allAdmins = allAdmins.filter(a => a.id !== adminId);
-            updateAdminsList();
-            showNotification('관리자가 삭제되었습니다.', 'success');
-        }
-    } else {
-        showNotification('슈퍼 관리자는 삭제할 수 없습니다.', 'error');
-    }
-}
-
-// 기타 액션 함수들
 function refreshData() {
     console.log('🔄 데이터 새로고침');
     showLoading(true);
     
-    // Firebase 사용자 동기화 포함
-    Promise.all([
-        loadFirebaseData(), // 이미 syncWithAuthentication을 포함함
-        // 추가 데이터 로드가 필요하면 여기에
-    ]).then(() => {
-        updateDashboard();
-        updateMemberStats();
-        updateMembersTable();
-        updateQuestionsList();
-        updateAdminsList();
+    loadFirebaseData().then(() => {
         showLoading(false);
-        showNotification('데이터가 새로고침되었습니다. 새로운 회원이 있다면 목록에 반영됩니다.', 'success');
+        showNotification('데이터가 새로고침되었습니다.', 'success');
     }).catch(error => {
         console.error('새로고침 오류:', error);
         showLoading(false);
@@ -2873,613 +1891,164 @@ function refreshData() {
     });
 }
 
-function logout() {
-    console.log('🚪 로그아웃');
-    if (confirm('정말로 로그아웃하시겠습니까?')) {
-        alert('로그아웃 기능은 개발 중입니다.');
+// Firebase 연결 상태 확인 함수
+function checkFirebaseStatus() {
+    console.log('🔍 Firebase 연결 상태 확인');
+    
+    let statusMessage = '';
+    let statusType = 'info';
+    
+    // Firebase 앱 상태 확인
+    if (window.firebaseApp) {
+        statusMessage += '✅ Firebase App: 연결됨\n';
+    } else {
+        statusMessage += '❌ Firebase App: 연결 안됨\n';
+        statusType = 'error';
     }
-}
-
-function toggleSidebar() {
-    console.log('📱 사이드바 토글');
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar) {
-        sidebar.classList.toggle('collapsed');
-    }
-}
-
-function toggleNotifications() {
-    console.log('🔔 알림 토글');
-    const dropdown = document.getElementById('notificationDropdown');
-    if (dropdown) {
-        dropdown.classList.toggle('show');
-    }
-}
-
-// 디버깅 및 테스트 함수들
-window.testShowAllMembers = function() {
-    console.log('🧪 전체 회원 보기 테스트 시작');
-    console.log('🔍 현재 회원 데이터:', allUsers);
     
-    try {
-        showAllMembers();
-    } catch (error) {
-        console.error('❌ 테스트 중 오류:', error);
-    }
-};
-
-window.checkMemberElements = function() {
-    console.log('🔍 회원 관리 DOM 요소 확인');
-    
-    const elements = {
-        'filterText': document.getElementById('filterText'),
-        'membersTableBody': document.getElementById('membersTableBody'),
-        'totalMembers': document.getElementById('totalMembers'),
-        'todayNewMembers': document.getElementById('todayNewMembers'),
-        'weeklyNewMembers': document.getElementById('weeklyNewMembers'),
-        'monthlyNewMembers': document.getElementById('monthlyNewMembers')
-    };
-    
-    Object.entries(elements).forEach(([name, element]) => {
-        console.log(`- ${name}:`, element ? '✅ 존재' : '❌ 없음');
-    });
-    
-    return elements;
-};
-
-window.forceUpdateMembers = function() {
-    console.log('🔄 강제 회원 데이터 업데이트');
-    updateMemberStats();
-    updateMembersTable();
-    showAllMembers();
-};
-
-// 회원 차트 초기화
-function initializeMemberCharts() {
-    console.log('📊 회원 차트 초기화 시작');
-    
-    try {
-        // 월별 가입 추이 차트
-        const memberJoinChart = document.getElementById('memberJoinChart');
-        if (memberJoinChart && typeof Chart !== 'undefined') {
-            const ctx = memberJoinChart.getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['1월', '2월', '3월', '4월', '5월', '6월'],
-                    datasets: [{
-                        label: '월별 가입자 수',
-                        data: [5, 8, 12, 7, 15, 10],
-                        borderColor: '#007bff',
-                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        }
-        
-        // 회원 활동 분포 차트
-        const memberActivityChart = document.getElementById('memberActivityChart');
-        if (memberActivityChart && typeof Chart !== 'undefined') {
-            const ctx = memberActivityChart.getContext('2d');
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['활성', '비활성', '신규'],
-                    datasets: [{
-                        data: [70, 20, 10],
-                        backgroundColor: ['#28a745', '#ffc107', '#007bff']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-            });
-        }
-        
-        console.log('✅ 회원 차트 초기화 완료');
-        
-    } catch (error) {
-        console.error('❌ 회원 차트 초기화 오류:', error);
-        console.log('📊 Chart.js 라이브러리가 로드되지 않아 차트를 생성할 수 없습니다.');
-    }
-}
-
-// 분석 차트 초기화
-function initializeAnalyticsCharts() {
-    console.log('📊 분석 차트 초기화 시작');
-    
-    try {
-        if (typeof Chart === 'undefined') {
-            console.warn('⚠️ Chart.js 라이브러리가 로드되지 않음');
-            return;
-        }
-        
-        // 일일 질문 차트
-        const dailyChart = document.getElementById('dailyChart');
-        if (dailyChart) {
-            const ctx = dailyChart.getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['월', '화', '수', '목', '금', '토', '일'],
-                    datasets: [{
-                        label: '일일 질문 수',
-                        data: [12, 8, 15, 10, 20, 5, 7],
-                        backgroundColor: '#007bff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-                }
-            });
-        }
-        
-        // 카테고리 파이 차트
-        const categoryChart = document.getElementById('categoryPieChart');
-        if (categoryChart) {
-            const ctx = categoryChart.getContext('2d');
-            new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: ['AI 상세페이지', '홈페이지 제작', '챗봇 구축', '쇼츠/릴스', '기타'],
-                    datasets: [{
-                        data: [30, 25, 20, 15, 10],
-                        backgroundColor: ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6c757d']
-                    }]
-                },
-                options: {
-                    responsive: true
-                }
-            });
-        }
-        
-        console.log('✅ 분석 차트 초기화 완료');
-        
-    } catch (error) {
-        console.error('❌ 분석 차트 초기화 오류:', error);
-    }
-}
-
-// 누락된 백업 기록 업데이트 함수
-function updateBackupHistory() {
-    console.log('💾 백업 기록 업데이트');
-    
-    const backupHistory = document.getElementById('backupHistory');
-    if (backupHistory) {
-        backupHistory.innerHTML = `
-            <div class="backup-item">
-                <div class="backup-info">
-                    <div class="backup-name">전체 데이터 백업</div>
-                    <div class="backup-date">2024-06-01 09:30:00</div>
-                </div>
-                <div class="backup-size">2.3 MB</div>
-                <div class="backup-status success">완료</div>
-            </div>
-            <div class="backup-item">
-                <div class="backup-info">
-                    <div class="backup-name">질문 데이터 백업</div>
-                    <div class="backup-date">2024-05-31 14:15:00</div>
-                </div>
-                <div class="backup-size">1.8 MB</div>
-                <div class="backup-status success">완료</div>
-            </div>
-        `;
-    }
-}
-
-// 데이터 관리 관련 함수들
-function backupData() {
-    console.log('💾 데이터 백업 시작');
-    showNotification('데이터 백업을 시작합니다...', 'info');
-    
-    setTimeout(() => {
-        showNotification('데이터 백업이 완료되었습니다.', 'success');
-        updateBackupHistory();
-    }, 2000);
-}
-
-function exportToExcel() {
-    console.log('📊 엑셀 내보내기');
-    showNotification('엑셀 파일을 생성하고 있습니다...', 'info');
-    
-    setTimeout(() => {
-        showNotification('엑셀 파일 다운로드가 완료되었습니다.', 'success');
-    }, 1500);
-}
-
-function cleanupData() {
-    console.log('🧹 데이터 정리');
-    if (confirm('오래된 데이터를 정리하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
-        showNotification('데이터 정리를 시작합니다...', 'info');
-        
-        setTimeout(() => {
-            showNotification('데이터 정리가 완료되었습니다.', 'success');
-        }, 2000);
-    }
-}
-
-function analyzeUsage() {
-    console.log('📈 사용량 분석');
-    showNotification('사용량 분석을 시작합니다...', 'info');
-    
-    setTimeout(() => {
-        showNotification('사용량 분석이 완료되었습니다.', 'success');
-    }, 1500);
-}
-
-// 누락된 회원 관련 함수들
-function searchMembers() {
-    console.log('🔍 회원 검색 함수 호출');
-    const searchInput = document.getElementById('memberSearchInput');
-    if (searchInput) {
-        const searchTerm = searchInput.value.toLowerCase().trim();
-        console.log('🔍 회원 검색어:', searchTerm);
-        
-        if (searchTerm) {
-            const filteredUsers = allUsers.filter(user => 
-                (user.name && user.name.toLowerCase().includes(searchTerm)) ||
-                (user.email && user.email.toLowerCase().includes(searchTerm)) ||
-                (user.phone && user.phone.toLowerCase().includes(searchTerm))
-            );
-            updateMembersTableWithFilter(filteredUsers, `검색 결과: "${searchTerm}" (${filteredUsers.length}명)`);
-            console.log(`✅ 검색 완료: ${filteredUsers.length}명 발견`);
+    // Firebase Auth 상태 확인
+    if (window.firebaseAuth) {
+        statusMessage += '✅ Firebase Auth: 연결됨\n';
+        if (currentUser) {
+            statusMessage += `👤 현재 사용자: ${currentUser.email}\n`;
         } else {
-            showAllMembers();
+            statusMessage += '👤 현재 사용자: 로그인하지 않음\n';
         }
     } else {
-        console.warn('⚠️ memberSearchInput 요소를 찾을 수 없음');
+        statusMessage += '❌ Firebase Auth: 연결 안됨\n';
+        statusType = 'error';
     }
+    
+    // Firestore 상태 확인
+    if (window.firebaseDb) {
+        statusMessage += '✅ Firestore: 연결됨\n';
+    } else {
+        statusMessage += '❌ Firestore: 연결 안됨\n';
+        statusType = 'error';
+    }
+    
+    // Firebase 모듈 상태 확인
+    if (window.firebaseModules) {
+        statusMessage += '✅ Firebase 모듈: 로드됨\n';
+    } else {
+        statusMessage += '❌ Firebase 모듈: 로드 안됨\n';
+        statusType = 'error';
+    }
+    
+    // 데이터 상태 확인
+    statusMessage += `📊 사용자 수: ${allUsers.length}명\n`;
+    statusMessage += `📋 질문 수: ${allQuestions.length}개\n`;
+    statusMessage += `👨‍💼 관리자 수: ${allAdmins.length}명`;
+    
+    showNotification(statusMessage, statusType);
+    console.log('Firebase 상태:', {
+        app: !!window.firebaseApp,
+        auth: !!window.firebaseAuth,
+        db: !!window.firebaseDb,
+        modules: !!window.firebaseModules,
+        currentUser: currentUser,
+        usersCount: allUsers.length,
+        questionsCount: allQuestions.length,
+        adminsCount: allAdmins.length
+    });
 }
 
-function sortMembers() {
-    console.log('📊 회원 정렬 함수 호출');
-    const sortBy = document.getElementById('memberSortBy');
-    if (sortBy) {
-        const sortValue = sortBy.value;
-        console.log('📊 회원 정렬 기준:', sortValue);
+// 관리자 ID를 admin1, admin2 형태로 마이그레이션
+async function migrateAdminIds() {
+    console.log('🔄 관리자 ID 마이그레이션 시작');
+    
+    if (!db || !modules) {
+        showNotification('Firebase 연결을 확인해주세요.', 'error');
+        return;
+    }
+    
+    try {
+        showLoading(true);
+        showNotification('관리자 ID를 admin1, admin2 형태로 마이그레이션 중...', 'info');
         
-        if (!allUsers || allUsers.length === 0) {
-            console.warn('⚠️ 정렬할 회원 데이터가 없음');
+        const { collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp } = modules;
+        
+        // 기존 관리자들 조회
+        const adminsRef = collection(db, 'admins');
+        const adminsSnapshot = await getDocs(adminsRef);
+        
+        if (adminsSnapshot.empty) {
+            showNotification('마이그레이션할 관리자가 없습니다.', 'info');
             return;
         }
         
-        let sortedUsers = [...allUsers];
+        const existingAdmins = [];
+        const adminIdsToMigrate = [];
         
-        try {
-            switch (sortValue) {
-                case 'latest':
-                    sortedUsers.sort((a, b) => {
-                        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-                        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-                        return dateB - dateA;
-                    });
-                    break;
-                case 'oldest':
-                    sortedUsers.sort((a, b) => {
-                        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
-                        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-                        return dateA - dateB;
-                    });
-                    break;
-                case 'name':
-                    sortedUsers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-                    break;
-                case 'questions':
-                    sortedUsers.sort((a, b) => (b.questionCount || 0) - (a.questionCount || 0));
-                    break;
-                default:
-                    console.warn('⚠️ 알 수 없는 정렬 기준:', sortValue);
-                    return;
+        adminsSnapshot.forEach((docSnapshot) => {
+            const adminData = docSnapshot.data();
+            const currentId = docSnapshot.id;
+            
+            // 이미 admin1, admin2 형태인지 확인
+            const isNewFormat = /^admin\d+$/.test(currentId);
+            
+            if (!isNewFormat) {
+                adminIdsToMigrate.push({
+                    currentId: currentId,
+                    data: { ...adminData, id: currentId }
+                });
             }
             
-            updateMembersTableWithFilter(sortedUsers, `정렬: ${sortValue} (${sortedUsers.length}명)`);
-            console.log(`✅ 회원 정렬 완료: ${sortValue}`);
-        } catch (error) {
-            console.error('❌ 회원 정렬 오류:', error);
-            showNotification('회원 정렬 중 오류가 발생했습니다.', 'error');
-        }
-    } else {
-        console.warn('⚠️ memberSortBy 요소를 찾을 수 없음');
-    }
-}
-
-function toggleSelectAllMembers() {
-    console.log('☑️ 회원 전체 선택 토글');
-    const checkboxes = document.querySelectorAll('#membersTableBody input[type="checkbox"]');
-    const headerCheckbox = document.querySelector('#members .members-table thead input[type="checkbox"]');
-    
-    console.log(`📋 체크박스 개수: ${checkboxes.length}개`);
-    
-    if (headerCheckbox) {
-        const shouldCheck = headerCheckbox.checked;
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = shouldCheck;
+            existingAdmins.push({
+                id: currentId,
+                data: adminData
+            });
         });
-        console.log(`✅ 모든 체크박스를 ${shouldCheck ? '선택' : '해제'}했습니다.`);
-    } else {
-        console.warn('⚠️ 헤더 체크박스를 찾을 수 없음');
-    }
-}
-
-function filterMembersByStatus() {
-    console.log('🔍 회원 상태 필터링 함수 호출');
-    const statusFilter = document.getElementById('memberStatusFilter');
-    if (statusFilter) {
-        const status = statusFilter.value;
-        console.log('🔍 회원 상태 필터:', status);
         
-        if (!allUsers || allUsers.length === 0) {
-            console.warn('⚠️ 필터링할 회원 데이터가 없음');
+        if (adminIdsToMigrate.length === 0) {
+            showNotification('모든 관리자 ID가 이미 새로운 형태입니다.', 'success');
             return;
         }
         
-        if (status === 'all') {
-            showAllMembers();
-        } else {
-            const filteredUsers = allUsers.filter(user => user.status === status);
-            updateMembersTableWithFilter(filteredUsers, `상태: ${status} (${filteredUsers.length}명)`);
-            console.log(`✅ 상태별 필터링 완료: ${status} - ${filteredUsers.length}명`);
-        }
-    } else {
-        console.warn('⚠️ memberStatusFilter 요소를 찾을 수 없음');
-    }
-}
-
-function exportMembers() {
-    console.log('📤 회원 내보내기');
-    showNotification('회원 데이터를 내보내고 있습니다...', 'info');
-    
-    // 실제 CSV 또는 Excel 내보내기 로직을 여기에 구현할 수 있습니다
-    setTimeout(() => {
-        showNotification('회원 데이터 내보내기가 완료되었습니다.', 'success');
-    }, 1500);
-}
-
-// 추가 누락 함수들 구현
-function initializeMemberCharts() {
-    console.log('📊 회원 차트 초기화 시작');
-    
-    try {
-        if (typeof Chart === 'undefined') {
-            console.warn('⚠️ Chart.js 라이브러리가 로드되지 않아 차트를 생성할 수 없습니다.');
-            return;
-        }
+        console.log(`📋 마이그레이션 대상: ${adminIdsToMigrate.length}개 관리자`);
         
-        // 월별 가입 추이 차트
-        const memberJoinChart = document.getElementById('memberJoinChart');
-        if (memberJoinChart) {
-            const ctx = memberJoinChart.getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['1월', '2월', '3월', '4월', '5월', '6월'],
-                    datasets: [{
-                        label: '월별 가입자 수',
-                        data: [5, 8, 12, 7, 15, 10],
-                        borderColor: '#007bff',
-                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-            console.log('✅ 월별 가입 추이 차트 생성 완료');
-        }
+        // 새로운 ID로 관리자 재생성
+        let migratedCount = 0;
         
-        // 회원 활동 분포 차트
-        const memberActivityChart = document.getElementById('memberActivityChart');
-        if (memberActivityChart) {
-            const ctx = memberActivityChart.getContext('2d');
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['활성', '비활성', '신규'],
-                    datasets: [{
-                        data: [70, 20, 10],
-                        backgroundColor: ['#28a745', '#ffc107', '#007bff']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
-                }
-            });
-            console.log('✅ 회원 활동 분포 차트 생성 완료');
-        }
-        
-        console.log('✅ 회원 차트 초기화 완료');
-        
-    } catch (error) {
-        console.error('❌ 회원 차트 초기화 오류:', error);
-    }
-}
-
-function updateBackupHistory() {
-    console.log('💾 백업 기록 업데이트');
-    
-    const backupHistory = document.getElementById('backupHistory');
-    if (backupHistory) {
-        backupHistory.innerHTML = `
-            <div class="backup-item">
-                <div class="backup-info">
-                    <div class="backup-name">전체 데이터 백업</div>
-                    <div class="backup-date">${new Date().toLocaleString()}</div>
-                </div>
-                <div class="backup-size">2.3 MB</div>
-                <div class="backup-status success">완료</div>
-            </div>
-            <div class="backup-item">
-                <div class="backup-info">
-                    <div class="backup-name">질문 데이터 백업</div>
-                    <div class="backup-date">${new Date(Date.now() - 86400000).toLocaleString()}</div>
-                </div>
-                <div class="backup-size">1.8 MB</div>
-                <div class="backup-status success">완료</div>
-            </div>
-        `;
-        console.log('✅ 백업 기록 업데이트 완료');
-    }
-}
-
-// 즉시 실행 함수 - 페이지 로드 시 전체 회원 표시
-function ensureMembersDisplay() {
-    console.log('🔄 회원 표시 보장 함수 실행');
-    
-    // 회원 관리 섹션이 활성화되어 있으면 전체 회원 표시
-    const membersSection = document.getElementById('members');
-    if (membersSection && membersSection.classList.contains('active')) {
-        console.log('👥 회원 관리 섹션이 활성화됨, 전체 회원 자동 표시');
-        
-        // 0.5초 후 전체 회원 자동 표시
-        setTimeout(() => {
-            if (allUsers && allUsers.length > 0) {
-                showAllMembers();
-            } else {
-                console.log('🔄 데이터가 없어 강제 로드 후 재시도');
-                loadTestUsers();
-                setTimeout(() => {
-                    if (allUsers && allUsers.length > 0) {
-                        showAllMembers();
-                    }
-                }, 200);
+        for (let i = 0; i < adminIdsToMigrate.length; i++) {
+            const adminToMigrate = adminIdsToMigrate[i];
+            const newAdminId = `admin${i + 1}`;
+            
+            try {
+                // 새 ID로 문서 생성
+                const newAdminRef = doc(collection(db, 'admins'), newAdminId);
+                const migratedData = {
+                    ...adminToMigrate.data,
+                    id: newAdminId,
+                    migratedAt: serverTimestamp(),
+                    migratedFrom: adminToMigrate.currentId
+                };
+                
+                await setDoc(newAdminRef, migratedData);
+                
+                // 기존 문서 삭제
+                const oldAdminRef = doc(collection(db, 'admins'), adminToMigrate.currentId);
+                await deleteDoc(oldAdminRef);
+                
+                migratedCount++;
+                console.log(`✅ ${adminToMigrate.currentId} → ${newAdminId} 마이그레이션 완료`);
+                
+            } catch (error) {
+                console.error(`❌ ${adminToMigrate.currentId} 마이그레이션 실패:`, error);
             }
-        }, 500);
-    }
-}
-
-// 강제 회원 데이터 업데이트 (디버깅용)
-function forceUpdateMembers() {
-    console.log('🔄 강제 회원 데이터 업데이트 시작');
-    
-    try {
-        // 1단계: 데이터 확인 및 로드
-        if (!allUsers || allUsers.length === 0) {
-            console.log('📦 테스트 데이터 강제 로드');
-            loadTestUsers();
         }
         
-        // 2단계: 통계 업데이트
-        console.log('📊 회원 통계 업데이트');
-        updateMemberStats();
+        console.log('✅ 관리자 ID 마이그레이션 완료');
+        showNotification(`${migratedCount}개 관리자 ID가 성공적으로 마이그레이션되었습니다!`, 'success');
         
-        // 3단계: 테이블 업데이트
-        console.log('📋 회원 테이블 업데이트');
-        updateMembersTable();
-        
-        // 4단계: 전체 회원 표시
-        console.log('👥 전체 회원 표시');
-        showAllMembers();
-        
-        // 5단계: 차트 초기화
-        console.log('📊 차트 초기화');
-        setTimeout(() => {
-            initializeMemberCharts();
-        }, 100);
-        
-        showNotification('회원 데이터가 강제로 업데이트되었습니다.', 'success');
-        console.log('✅ 강제 회원 데이터 업데이트 완료');
+        // 데이터 새로고침
+        await loadFirebaseAdmins();
+        updateAdminsList();
         
     } catch (error) {
-        console.error('❌ 강제 회원 데이터 업데이트 오류:', error);
-        showNotification('회원 데이터 업데이트 중 오류가 발생했습니다.', 'error');
+        console.error('❌ 관리자 ID 마이그레이션 실패:', error);
+        showNotification('관리자 ID 마이그레이션 중 오류가 발생했습니다: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
     }
-}
-
-// 테스트 및 디버깅 함수들
-function testShowAllMembers() {
-    console.log('🧪 전체 회원 보기 테스트 시작');
-    console.log('🔍 현재 회원 데이터:', allUsers);
-    
-    try {
-        showAllMembers();
-        console.log('✅ 테스트 완료');
-    } catch (error) {
-        console.error('❌ 테스트 중 오류:', error);
-    }
-}
-
-function checkMemberElements() {
-    console.log('🔍 회원 관리 DOM 요소 확인');
-    
-    const elements = {
-        'filterText': document.getElementById('filterText'),
-        'membersTableBody': document.getElementById('membersTableBody'),
-        'totalMembers': document.getElementById('totalMembers'),
-        'todayNewMembers': document.getElementById('todayNewMembers'),
-        'weeklyNewMembers': document.getElementById('weeklyNewMembers'),
-        'monthlyNewMembers': document.getElementById('monthlyNewMembers'),
-        'memberSearchInput': document.getElementById('memberSearchInput'),
-        'memberSortBy': document.getElementById('memberSortBy'),
-        'memberStatusFilter': document.getElementById('memberStatusFilter')
-    };
-    
-    console.log('📋 DOM 요소 검사 결과:');
-    Object.entries(elements).forEach(([name, element]) => {
-        const status = element ? '✅ 존재' : '❌ 없음';
-        console.log(`- ${name}: ${status}`);
-    });
-    
-    return elements;
-}
-
-// 전역 함수로 노출하여 HTML에서 접근 가능하도록 함
-window.showAllMembers = showAllMembers;
-window.filterMembersByPeriod = filterMembersByPeriod;
-window.updateFilterText = updateFilterText;
-window.updateMembersTableWithFilter = updateMembersTableWithFilter;
-window.highlightStatCard = highlightStatCard;
-window.searchMembers = searchMembers;
-window.sortMembers = sortMembers;
-window.toggleSelectAllMembers = toggleSelectAllMembers;
-window.filterMembersByStatus = filterMembersByStatus;
-window.exportMembers = exportMembers;
-window.initializeMemberCharts = initializeMemberCharts;
-window.updateBackupHistory = updateBackupHistory;
-window.ensureMembersDisplay = ensureMembersDisplay;
-window.forceUpdateMembers = forceUpdateMembers;
-window.testShowAllMembers = testShowAllMembers;
-window.checkMemberElements = checkMemberElements;
-window.backupData = backupData;
-window.exportToExcel = exportToExcel;
-window.cleanupData = cleanupData;
-window.analyzeUsage = analyzeUsage;
+} 

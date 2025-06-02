@@ -9,11 +9,11 @@ import {
     signOut 
 } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
 import { 
-    getDatabase, 
-    ref, 
-    set, 
-    get 
-} from "https://www.gstatic.com/firebasejs/11.8.1/firebase-database.js";
+    getFirestore, 
+    doc, 
+    setDoc, 
+    getDoc 
+} from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
 // Firebase 설정
 const firebaseConfig = {
@@ -30,7 +30,7 @@ const firebaseConfig = {
 // Firebase 초기화
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const database = getDatabase(app);
+const db = getFirestore(app);
 
 console.log('🔥 Firebase Auth 초기화 완료');
 
@@ -209,15 +209,22 @@ async function handleRegister(e) {
         
         // 사용자 정보를 데이터베이스에 저장
         const userData = {
+            uid: user.uid,
             name: name,
             phone: phone,
             email: email,
+            status: 'active',
+            role: 'user',
             autoLogin: autoLogin,
+            questionCount: 0,
+            answerCount: 0,
             createdAt: Date.now(),
             lastLoginAt: Date.now()
         };
         
-        await set(ref(database, 'users/' + user.uid), userData);
+        // 이메일 기반 문서 ID 생성 (admin.js와 동일한 방식)
+        const userDocId = email.replace(/[.@]/g, '_');
+        await setDoc(doc(db, 'users', userDocId), userData);
         
         console.log('✅ 회원가입 성공:', user.email);
         
@@ -366,4 +373,4 @@ export async function logout() {
     }
 }
 
-console.log('�� Auth.js 초기화 완료!'); 
+console.log(' Auth.js 초기화 완료!'); 
