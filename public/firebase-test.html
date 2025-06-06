@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase 테스트</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; }
+        .log { background: #1a1a1a; color: #00ff00; padding: 15px; font-family: monospace; border-radius: 5px; margin: 10px 0; }
+        .error { color: #ff4444; }
+        .success { color: #44ff44; }
+        .info { color: #4444ff; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Firebase 연결 테스트</h1>
+        <p>이 페이지는 Firebase가 올바르게 작동하는지 테스트합니다.</p>
+        
+        <div id="log" class="log">
+            <div>테스트 시작...</div>
+        </div>
+        
+        <button onclick="testFirebase()">Firebase 테스트 실행</button>
+        <button onclick="testLogin()">로그인 테스트</button>
+        <button onclick="clearLog()">로그 지우기</button>
+        
+        <div style="margin-top: 20px;">
+            <input type="email" id="testEmail" placeholder="테스트 이메일" value="bcshine03@gmail.com">
+            <input type="password" id="testPassword" placeholder="비밀번호">
+        </div>
+    </div>
+
+    <!-- Firebase v8 Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function clearLog() {
+            log.innerHTML = '<div>로그 지워짐...</div>';
+        }
+        
+        // Firebase 설정
+        const firebaseConfig = {
+            apiKey: "AIzaSyDjLGVPUFy2sAVjfys_FEbITu2Dq7VNDKM",
+            authDomain: "mid-ai-5th.firebaseapp.com",
+            projectId: "mid-ai-5th",
+            storageBucket: "mid-ai-5th.firebasestorage.app",
+            messagingSenderId: "2959931709",
+            appId: "1:2959931709:web:2e4c0e1bf8ff3121a46d54"
+        };
+        
+        let app, auth;
+        
+        function testFirebase() {
+            addLog('🔄 Firebase 테스트 시작', 'info');
+            
+            try {
+                // 1. Firebase 스크립트 로딩 확인
+                if (typeof firebase === 'undefined') {
+                    addLog('❌ Firebase 스크립트가 로드되지 않음', 'error');
+                    return;
+                }
+                addLog('✅ Firebase 스크립트 로드됨', 'success');
+                
+                // 2. Firebase 초기화
+                app = firebase.initializeApp(firebaseConfig);
+                addLog('✅ Firebase 앱 초기화 성공', 'success');
+                
+                // 3. Auth 서비스 연결
+                auth = firebase.auth();
+                addLog('✅ Firebase Auth 서비스 연결됨', 'success');
+                
+                // 4. 프로젝트 ID 확인
+                addLog(`✅ 프로젝트 ID: ${app.options.projectId}`, 'success');
+                
+                // 5. 인증 상태 확인
+                auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        addLog(`✅ 현재 로그인 사용자: ${user.email}`, 'success');
+                    } else {
+                        addLog('ℹ️ 현재 로그아웃 상태', 'info');
+                    }
+                });
+                
+                addLog('🎉 모든 Firebase 테스트 통과!', 'success');
+                
+            } catch (error) {
+                addLog(`❌ Firebase 오류: ${error.message}`, 'error');
+                addLog(`❌ 오류 코드: ${error.code}`, 'error');
+                console.error('Firebase 오류 상세:', error);
+            }
+        }
+        
+        async function testLogin() {
+            const email = document.getElementById('testEmail').value;
+            const password = document.getElementById('testPassword').value;
+            
+            if (!email || !password) {
+                addLog('❌ 이메일과 비밀번호를 입력하세요', 'error');
+                return;
+            }
+            
+            if (!auth) {
+                addLog('❌ Firebase Auth가 초기화되지 않음. 먼저 Firebase 테스트를 실행하세요', 'error');
+                return;
+            }
+            
+            addLog('🔄 로그인 시도 중...', 'info');
+            
+            try {
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                addLog(`✅ 로그인 성공: ${userCredential.user.email}`, 'success');
+            } catch (error) {
+                addLog(`❌ 로그인 실패: ${error.message}`, 'error');
+                addLog(`❌ 오류 코드: ${error.code}`, 'error');
+            }
+        }
+        
+        // 페이지 로드 시 자동 테스트
+        window.addEventListener('load', () => {
+            addLog('🌐 페이지 로드 완료', 'info');
+            setTimeout(() => {
+                testFirebase();
+            }, 1000);
+        });
+    </script>
+</body>
+</html> 
