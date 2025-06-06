@@ -1,29 +1,37 @@
-// Firebase Authentication 시스템
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-import { 
-    getAuth, 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword, 
-    updateProfile, 
-    onAuthStateChanged,
-    signOut 
-} from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
-import { 
-    getFirestore, 
-    doc, 
-    setDoc, 
-    getDoc 
-} from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+// Firebase 전통적인 스크립트 방식으로 변경
+// ES6 모듈 대신 CDN 스크립트 사용
 
-// Firebase 설정을 전역 변수에서 가져오기
-// firebase-config.js 파일이 먼저 로드되어야 함
+// Firebase가 로드될 때까지 기다리는 함수
+function waitForFirebase() {
+    return new Promise((resolve) => {
+        if (window.firebase) {
+            resolve();
+        } else {
+            const checkFirebase = setInterval(() => {
+                if (window.firebase) {
+                    clearInterval(checkFirebase);
+                    resolve();
+                }
+            }, 100);
+        }
+    });
+}
 
-// Firebase 초기화
-const app = initializeApp(window.firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Firebase 초기화 함수
+async function initializeFirebase() {
+    await waitForFirebase();
+    
+    // Firebase 초기화
+    const app = firebase.initializeApp(window.firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    
+    console.log('🔥 Firebase Auth 초기화 완료');
+    
+    return { app, auth, db };
+}
 
-console.log('🔥 Firebase Auth 초기화 완료');
+let firebaseInstance = null;
 
 // 전역 함수들
 window.togglePassword = togglePassword;
@@ -37,23 +45,31 @@ const isLoginPage = window.location.pathname.includes('login.html');
 const isRegisterPage = window.location.pathname.includes('register.html');
 
 // 페이지 로드 시 초기화
-document.addEventListener('DOMContentLoaded', function() {
-    // 인증 상태 변화 감지
-    onAuthStateChanged(auth, (user) => {
-        if (user && (isLoginPage || isRegisterPage)) {
-            // 이미 로그인된 상태라면 메인 페이지로 리다이렉트
-            showMessage('이미 로그인되어 있습니다. 메인 페이지로 이동합니다.');
-            setTimeout(() => {
-                window.location.href = 'index.html';
-            }, 1500);
-        }
-    });
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        firebaseInstance = await initializeFirebase();
+        const { auth } = firebaseInstance;
+        
+        // 인증 상태 변화 감지
+        auth.onAuthStateChanged((user) => {
+            if (user && (isLoginPage || isRegisterPage)) {
+                // 이미 로그인된 상태라면 메인 페이지로 리다이렉트
+                showMessage('이미 로그인되어 있습니다. 메인 페이지로 이동합니다.');
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1500);
+            }
+        });
 
-    // 폼 이벤트 리스너 설정
-    if (isLoginPage) {
-        initLoginForm();
-    } else if (isRegisterPage) {
-        initRegisterForm();
+        // 폼 이벤트 리스너 설정
+        if (isLoginPage) {
+            initLoginForm();
+        } else if (isRegisterPage) {
+            initRegisterForm();
+        }
+    } catch (error) {
+        console.error('Firebase 초기화 오류:', error);
+        showMessage('Firebase 초기화에 실패했습니다. 페이지를 새로고침해주세요.');
     }
 });
 
@@ -83,6 +99,12 @@ function initRegisterForm() {
 async function handleLogin(e) {
     e.preventDefault();
     
+    if (!firebaseInstance) {
+        showMessage('Firebase가 아직 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.');
+        return;
+    }
+    
+    const { auth } = firebaseInstance;
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     const rememberMe = document.getElementById('rememberMe').checked;
@@ -95,7 +117,7 @@ async function handleLogin(e) {
     showLoading(true, '로그인 중입니다...');
     
     try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
         const user = userCredential.user;
         
         console.log('✅ 로그인 성공:', user.email);
@@ -147,6 +169,12 @@ async function handleLogin(e) {
 async function handleRegister(e) {
     e.preventDefault();
     
+    if (!firebaseInstance) {
+        showMessage('Firebase가 아직 초기화되지 않았습니다. 잠시 후 다시 시도해주세요.');
+        return;
+    }
+    
+    const { auth, db } = firebaseInstance;
     const name = document.getElementById('name').value.trim();
     const phone = document.getElementById('phone').value.trim();
     const email = document.getElementById('email').value.trim();
@@ -190,11 +218,11 @@ async function handleRegister(e) {
     
     try {
         // Firebase Authentication으로 계정 생성
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await auth.createUserWithEmailAndPassword(email, password);
         const user = userCredential.user;
         
         // 사용자 프로필 업데이트
-        await updateProfile(user, {
+        await user.updateProfile({
             displayName: name
         });
         
@@ -213,21 +241,14 @@ async function handleRegister(e) {
             lastLoginAt: Date.now()
         };
         
-        // 이메일 기반 문서 ID 생성 (admin.js와 동일한 방식)
-        const userDocId = email.replace(/[.@]/g, '_');
-        await setDoc(doc(db, 'users', userDocId), userData);
+        await db.collection('users').doc(user.uid).set(userData);
         
         console.log('✅ 회원가입 성공:', user.email);
         
-        // 자동 로그인 설정
-        if (autoLogin) {
-            localStorage.setItem('rememberLogin', 'true');
-        }
-        
-        showMessage('회원가입이 완료되었습니다! 메인 페이지로 이동합니다.');
+        showMessage('회원가입이 완료되었습니다! 로그인 페이지로 이동합니다.');
         
         setTimeout(() => {
-            window.location.href = 'index.html';
+            window.location.href = 'login.html';
         }, 2000);
         
     } catch (error) {
@@ -237,7 +258,7 @@ async function handleRegister(e) {
         
         switch (error.code) {
             case 'auth/email-already-in-use':
-                errorMessage = '이미 사용 중인 이메일입니다. 로그인을 시도해보세요.';
+                errorMessage = '이미 사용 중인 이메일입니다. 다른 이메일을 사용해주세요.';
                 break;
             case 'auth/invalid-email':
                 errorMessage = '유효하지 않은 이메일 형식입니다.';
@@ -254,32 +275,28 @@ async function handleRegister(e) {
     }
 }
 
-// 비밀번호 보기/숨기기 토글
+// 비밀번호 표시/숨김 토글
 function togglePassword(inputId) {
     const input = document.getElementById(inputId);
-    const eyeIcon = document.getElementById(inputId + '-eye');
+    const icon = document.getElementById(inputId + '-eye');
     
     if (input.type === 'password') {
         input.type = 'text';
-        eyeIcon.classList.remove('fa-eye');
-        eyeIcon.classList.add('fa-eye-slash');
+        icon.className = 'far fa-eye-slash';
     } else {
         input.type = 'password';
-        eyeIcon.classList.remove('fa-eye-slash');
-        eyeIcon.classList.add('fa-eye');
+        icon.className = 'far fa-eye';
     }
 }
 
 // 전화번호 포맷팅
 function formatPhoneNumber(e) {
-    let value = e.target.value.replace(/[^0-9]/g, '');
-    
+    let value = e.target.value.replace(/[^\d]/g, '');
     if (value.length >= 3 && value.length <= 7) {
-        value = value.replace(/(\d{3})(\d{0,4})/, '$1-$2');
+        value = value.replace(/(\d{3})(\d+)/, '$1-$2');
     } else if (value.length > 7) {
-        value = value.replace(/(\d{3})(\d{4})(\d{0,4})/, '$1-$2-$3');
+        value = value.replace(/(\d{3})(\d{4})(\d+)/, '$1-$2-$3');
     }
-    
     e.target.value = value;
 }
 
@@ -311,56 +328,48 @@ function agreeTerms() {
     closeTermsModal();
 }
 
-// 로딩 상태 표시/숨김
+// 로딩 표시/숨김
 function showLoading(show, message = '처리 중입니다...') {
-    const loadingElement = document.getElementById('loading');
-    if (loadingElement) {
-        if (show) {
-            loadingElement.style.display = 'flex';
-            const loadingText = loadingElement.querySelector('p');
-            if (loadingText) {
-                loadingText.textContent = message;
-            }
-        } else {
-            loadingElement.style.display = 'none';
+    const loading = document.getElementById('loading');
+    if (show) {
+        loading.style.display = 'flex';
+        const loadingText = loading.querySelector('p');
+        if (loadingText) {
+            loadingText.textContent = message;
         }
+    } else {
+        loading.style.display = 'none';
     }
 }
 
 // 메시지 표시
 function showMessage(message) {
-    const messageModal = document.getElementById('messageModal');
-    const messageText = document.getElementById('messageText');
-    
-    if (messageModal && messageText) {
-        messageText.textContent = message;
-        messageModal.style.display = 'flex';
-    }
+    const modal = document.getElementById('messageModal');
+    const text = document.getElementById('messageText');
+    text.textContent = message;
+    modal.style.display = 'flex';
 }
 
-// 메시지 모달 닫기
+// 메시지 닫기
 function closeMessage() {
-    const messageModal = document.getElementById('messageModal');
-    if (messageModal) {
-        messageModal.style.display = 'none';
-    }
+    document.getElementById('messageModal').style.display = 'none';
 }
 
-// 사용자 인증 상태 확인 (다른 페이지에서 사용)
-export function getCurrentUser() {
-    return auth.currentUser;
+// 현재 사용자 정보 가져오기
+async function getCurrentUser() {
+    if (!firebaseInstance) return null;
+    return firebaseInstance.auth.currentUser;
 }
 
-// 로그아웃 (다른 페이지에서 사용)
-export async function logout() {
+// 로그아웃
+async function logout() {
+    if (!firebaseInstance) return;
     try {
-        await signOut(auth);
-        localStorage.removeItem('rememberLogin');
-        console.log('✅ 로그아웃 성공');
-        return true;
+        await firebaseInstance.auth.signOut();
+        console.log('로그아웃 완료');
+        window.location.href = 'login.html';
     } catch (error) {
-        console.error('❌ 로그아웃 오류:', error);
-        return false;
+        console.error('로그아웃 오류:', error);
     }
 }
 

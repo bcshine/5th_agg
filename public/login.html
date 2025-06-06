@@ -78,8 +78,15 @@
         </div>
     </div>
 
-    <!-- Firebase 스크립트 - 순서가 중요함 -->
+    <!-- Firebase CDN 스크립트 - 전통적인 방식 -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Firebase 설정 -->
     <script src="firebase-config.js"></script>
-    <script type="module" src="auth.js"></script>
+    
+    <!-- Auth 스크립트 -->
+    <script src="auth.js"></script>
 </body>
 </html> 
