@@ -1,6 +1,18 @@
 // Firebase 전통적인 스크립트 방식으로 변경
 // ES6 모듈 대신 CDN 스크립트 사용
 
+// Firebase 설정을 직접 포함 (로딩 문제 해결)
+const firebaseConfig = {
+  apiKey: "AIzaSyDjLGVPUFy2sAVjfys_FEbITu2Dq7VNDKM",
+  authDomain: "mid-ai-5th.firebaseapp.com",
+  projectId: "mid-ai-5th",
+  storageBucket: "mid-ai-5th.firebasestorage.app",
+  messagingSenderId: "2959931709",
+  appId: "1:2959931709:web:2e4c0e1bf8ff3121a46d54",
+  measurementId: "G-ZVZKJWY7S5",
+  databaseURL: "https://mid-ai-5th-default-rtdb.firebaseio.com"
+};
+
 // Firebase가 로드될 때까지 기다리는 함수
 function waitForFirebase() {
     return new Promise((resolve, reject) => {
@@ -11,7 +23,7 @@ function waitForFirebase() {
             attempts++;
             console.log(`Firebase 로딩 확인 중... (${attempts}/${maxAttempts})`);
             
-            if (window.firebase) {
+            if (window.firebase && window.firebase.initializeApp) {
                 clearInterval(checkFirebase);
                 console.log('✅ Firebase 글로벌 객체 확인됨');
                 resolve();
@@ -32,15 +44,10 @@ async function initializeFirebase() {
         // Firebase 스크립트 로딩 대기
         await waitForFirebase();
         
-        // Firebase Config 확인
-        if (!window.firebaseConfig) {
-            throw new Error('firebaseConfig가 정의되지 않았습니다');
-        }
-        
-        console.log('🔧 Firebase Config:', window.firebaseConfig);
+        console.log('🔧 Firebase Config:', firebaseConfig);
         
         // Firebase 초기화
-        const app = firebase.initializeApp(window.firebaseConfig);
+        const app = firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
         
