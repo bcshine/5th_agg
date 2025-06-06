@@ -3,32 +3,58 @@
 
 // Firebase가 로드될 때까지 기다리는 함수
 function waitForFirebase() {
-    return new Promise((resolve) => {
-        if (window.firebase) {
-            resolve();
-        } else {
-            const checkFirebase = setInterval(() => {
-                if (window.firebase) {
-                    clearInterval(checkFirebase);
-                    resolve();
-                }
-            }, 100);
-        }
+    return new Promise((resolve, reject) => {
+        let attempts = 0;
+        const maxAttempts = 50; // 5초 대기
+        
+        const checkFirebase = setInterval(() => {
+            attempts++;
+            console.log(`Firebase 로딩 확인 중... (${attempts}/${maxAttempts})`);
+            
+            if (window.firebase) {
+                clearInterval(checkFirebase);
+                console.log('✅ Firebase 글로벌 객체 확인됨');
+                resolve();
+            } else if (attempts >= maxAttempts) {
+                clearInterval(checkFirebase);
+                console.error('❌ Firebase 로딩 시간 초과');
+                reject(new Error('Firebase 로딩 타임아웃'));
+            }
+        }, 100);
     });
 }
 
 // Firebase 초기화 함수
 async function initializeFirebase() {
-    await waitForFirebase();
-    
-    // Firebase 초기화
-    const app = firebase.initializeApp(window.firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    
-    console.log('🔥 Firebase Auth 초기화 완료');
-    
-    return { app, auth, db };
+    try {
+        console.log('🔄 Firebase 초기화 시작...');
+        
+        // Firebase 스크립트 로딩 대기
+        await waitForFirebase();
+        
+        // Firebase Config 확인
+        if (!window.firebaseConfig) {
+            throw new Error('firebaseConfig가 정의되지 않았습니다');
+        }
+        
+        console.log('🔧 Firebase Config:', window.firebaseConfig);
+        
+        // Firebase 초기화
+        const app = firebase.initializeApp(window.firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        console.log('✅ Firebase App 초기화 완료');
+        console.log('✅ Firebase Auth 초기화 완료');
+        console.log('✅ Firebase Firestore 초기화 완료');
+        
+        return { app, auth, db };
+        
+    } catch (error) {
+        console.error('❌ Firebase 초기화 실패:', error);
+        console.error('❌ 오류 상세:', error.message);
+        throw error;
+    }
 }
 
 let firebaseInstance = null;
@@ -46,12 +72,18 @@ const isRegisterPage = window.location.pathname.includes('register.html');
 
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', async function() {
+    console.log('📄 페이지 로드 완료, Firebase 초기화 시작');
+    
     try {
         firebaseInstance = await initializeFirebase();
         const { auth } = firebaseInstance;
         
+        console.log('🎯 Firebase 인스턴스 생성 완료');
+        
         // 인증 상태 변화 감지
         auth.onAuthStateChanged((user) => {
+            console.log('👤 인증 상태 변화:', user ? user.email : '로그아웃 상태');
+            
             if (user && (isLoginPage || isRegisterPage)) {
                 // 이미 로그인된 상태라면 메인 페이지로 리다이렉트
                 showMessage('이미 로그인되어 있습니다. 메인 페이지로 이동합니다.');
@@ -63,13 +95,29 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // 폼 이벤트 리스너 설정
         if (isLoginPage) {
+            console.log('🔑 로그인 폼 초기화');
             initLoginForm();
         } else if (isRegisterPage) {
+            console.log('📝 회원가입 폼 초기화');
             initRegisterForm();
         }
+        
+        console.log('✅ 모든 초기화 완료');
+        
     } catch (error) {
-        console.error('Firebase 초기화 오류:', error);
-        showMessage('Firebase 초기화에 실패했습니다. 페이지를 새로고침해주세요.');
+        console.error('❌ 전체 초기화 실패:', error);
+        
+        let errorMessage = 'Firebase 초기화에 실패했습니다.';
+        
+        if (error.message.includes('타임아웃')) {
+            errorMessage += ' 인터넷 연결을 확인하고 페이지를 새로고침해주세요.';
+        } else if (error.message.includes('firebaseConfig')) {
+            errorMessage += ' 설정 파일에 문제가 있습니다.';
+        } else {
+            errorMessage += ` 오류: ${error.message}`;
+        }
+        
+        showMessage(errorMessage);
     }
 });
 
