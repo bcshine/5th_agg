@@ -25,6 +25,7 @@
         
         <button onclick="testFirebase()">Firebase 테스트 실행</button>
         <button onclick="testLogin()">로그인 테스트</button>
+        <button onclick="testLogout()">로그아웃 테스트</button>
         <button onclick="clearLog()">로그 지우기</button>
         
         <div style="margin-top: 20px;">
@@ -126,6 +127,22 @@
             } catch (error) {
                 addLog(`❌ 로그인 실패: ${error.message}`, 'error');
                 addLog(`❌ 오류 코드: ${error.code}`, 'error');
+            }
+        }
+        
+        async function testLogout() {
+            if (!auth) {
+                addLog('❌ Firebase Auth가 초기화되지 않음. 먼저 Firebase 테스트를 실행하세요', 'error');
+                return;
+            }
+            
+            addLog('🔄 로그아웃 시도 중...', 'info');
+            
+            try {
+                await auth.signOut();
+                addLog('✅ 로그아웃 성공', 'success');
+            } catch (error) {
+                addLog(`❌ 로그아웃 실패: ${error.message}`, 'error');
             }
         }
         

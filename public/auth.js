@@ -20,12 +20,20 @@ function initializeFirebase() {
         // Firebase 스크립트 로딩 확인
         if (typeof firebase === 'undefined') {
             console.error('❌ Firebase 스크립트가 로드되지 않음');
+            console.error('현재 window.firebase:', window.firebase);
             return false;
         }
         
+        console.log('✅ Firebase 스크립트 로드됨');
+        console.log('Firebase 버전:', firebase.SDK_VERSION);
+        
         // Firebase 초기화
+        console.log('📋 Firebase 설정:', firebaseConfig);
         app = firebase.initializeApp(firebaseConfig);
+        console.log('✅ Firebase 앱 초기화 완료');
+        
         auth = firebase.auth();
+        console.log('✅ Firebase Auth 초기화 완료');
         
         // Firestore는 선택적으로 초기화
         try {
@@ -37,12 +45,15 @@ function initializeFirebase() {
         
         console.log('✅ Firebase 초기화 완료');
         console.log('✅ 프로젝트 ID:', app.options.projectId);
+        console.log('✅ Auth Domain:', app.options.authDomain);
         
         isFirebaseReady = true;
         return true;
         
     } catch (error) {
         console.error('❌ Firebase 초기화 실패:', error);
+        console.error('오류 상세:', error.message);
+        console.error('오류 스택:', error.stack);
         return false;
     }
 }
@@ -68,18 +79,21 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
     
-    // 인증 상태 변화 감지
-    auth.onAuthStateChanged((user) => {
-        console.log('👤 인증 상태 변화:', user ? `로그인: ${user.email}` : '로그아웃');
-        
-        if (user && (isLoginPage || isRegisterPage)) {
-            console.log('이미 로그인된 사용자 감지, 메인으로 리다이렉트');
-            showMessage('이미 로그인되어 있습니다. 메인 페이지로 이동합니다.');
-            setTimeout(() => {
-                window.location.href = 'index.html';
-            }, 1500);
-        }
-    });
+    // Firebase가 성공적으로 초기화된 경우에만 인증 상태 감지
+    if (auth) {
+        // 인증 상태 변화 감지
+        auth.onAuthStateChanged((user) => {
+            console.log('👤 인증 상태 변화:', user ? `로그인: ${user.email}` : '로그아웃');
+            
+            if (user && (isLoginPage || isRegisterPage)) {
+                console.log('이미 로그인된 사용자 감지, 메인으로 리다이렉트');
+                showMessage('이미 로그인되어 있습니다. 메인 페이지로 이동합니다.');
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1500);
+            }
+        });
+    }
 
     // 폼 이벤트 리스너 설정
     if (isLoginPage) {

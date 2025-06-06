@@ -41,7 +41,15 @@
             </nav>
 
             <div style="display: flex; align-items: center; gap: 15px;">
-                <a href="login.html" class="login-btn">로그인</a>
+                <!-- 로그아웃 상태일 때 -->
+                <a href="login.html" class="login-btn" id="loginBtn">로그인</a>
+                
+                <!-- 로그인 상태일 때 (기본적으로 숨김) -->
+                <div id="userInfo" style="display: none; align-items: center; gap: 10px;">
+                    <span id="userName" style="color: white; font-size: 0.9rem;"></span>
+                    <button onclick="logout()" class="login-btn" style="background: white; color: black; padding: 8px 16px; border: 1px solid #ddd;">로그아웃</button>
+                </div>
+                
                 <!-- <a href="admin.html" class="admin-btn" style="position: fixed; bottom: 20px; left: 20px; 
                 color: white; text-decoration: none; font-size: 0.9rem; z-index: 1000;">mgr</a>
                  -->
@@ -566,7 +574,68 @@
         </div>
     </div>
 
+    <!-- Firebase Scripts for Authentication -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    
     <!-- 메인 JavaScript -->
     <script type="module" src="script.js"></script>
+    
+    <!-- Firebase 인증 상태 확인 스크립트 -->
+    <script>
+        // Firebase 설정
+        const firebaseConfig = {
+            apiKey: "AIzaSyDjLGVPUFy2sAVjfys_FEbITu2Dq7VNDKM",
+            authDomain: "mid-ai-5th.firebaseapp.com",
+            projectId: "mid-ai-5th",
+            storageBucket: "mid-ai-5th.firebasestorage.app",
+            messagingSenderId: "2959931709",
+            appId: "1:2959931709:web:2e4c0e1bf8ff3121a46d54"
+        };
+
+        // Firebase 초기화 및 인증 상태 확인
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                if (typeof firebase !== 'undefined') {
+                    const app = firebase.initializeApp(firebaseConfig);
+                    const auth = firebase.auth();
+                    
+                    // 인증 상태 변화 감지
+                    auth.onAuthStateChanged((user) => {
+                        const loginBtn = document.getElementById('loginBtn');
+                        const userInfo = document.getElementById('userInfo');
+                        const userName = document.getElementById('userName');
+                        
+                        if (user) {
+                            // 로그인된 상태
+                            if (loginBtn) loginBtn.style.display = 'none';
+                            if (userInfo) userInfo.style.display = 'flex';
+                            if (userName) userName.textContent = user.email || '사용자';
+                            console.log('로그인 상태:', user.email);
+                        } else {
+                            // 로그아웃된 상태
+                            if (loginBtn) loginBtn.style.display = 'block';
+                            if (userInfo) userInfo.style.display = 'none';
+                            console.log('로그아웃 상태');
+                        }
+                    });
+                    
+                    // 전역 로그아웃 함수
+                    window.logout = async function() {
+                        try {
+                            await auth.signOut();
+                            alert('로그아웃되었습니다.');
+                            location.reload();
+                        } catch (error) {
+                            console.error('로그아웃 오류:', error);
+                            alert('로그아웃 중 오류가 발생했습니다.');
+                        }
+                    };
+                }
+            } catch (error) {
+                console.log('Firebase 인증 상태 확인 실패:', error);
+            }
+        });
+    </script>
 </body>
 </html>
