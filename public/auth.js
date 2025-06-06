@@ -1,33 +1,46 @@
-// Firebase v8 Legacy 방식 - 가장 안정적
-// Firebase 설정
+// Firebase v8 Legacy 방식 - 테스트에서 작동 확인됨
 const firebaseConfig = {
   apiKey: "AIzaSyDjLGVPUFy2sAVjfys_FEbITu2Dq7VNDKM",
   authDomain: "mid-ai-5th.firebaseapp.com",
   projectId: "mid-ai-5th",
   storageBucket: "mid-ai-5th.firebasestorage.app",
   messagingSenderId: "2959931709",
-  appId: "1:2959931709:web:2e4c0e1bf8ff3121a46d54",
-  measurementId: "G-ZVZKJWY7S5",
-  databaseURL: "https://mid-ai-5th-default-rtdb.firebaseio.com"
+  appId: "1:2959931709:web:2e4c0e1bf8ff3121a46d54"
 };
 
-// Firebase 초기화 (v8 방식)
+// Firebase 초기화 변수
 let app, auth, db;
+let isFirebaseReady = false;
 
+// Firebase 초기화 함수
 function initializeFirebase() {
     try {
-        console.log('🔄 Firebase v8 초기화 시작...');
+        console.log('🔄 Firebase 초기화 시작...');
+        
+        // Firebase 스크립트 로딩 확인
+        if (typeof firebase === 'undefined') {
+            console.error('❌ Firebase 스크립트가 로드되지 않음');
+            return false;
+        }
         
         // Firebase 초기화
         app = firebase.initializeApp(firebaseConfig);
         auth = firebase.auth();
-        db = firebase.firestore();
         
-        console.log('✅ Firebase v8 초기화 완료');
-        console.log('✅ Auth 서비스 연결됨');
-        console.log('✅ Firestore 서비스 연결됨');
+        // Firestore는 선택적으로 초기화
+        try {
+            db = firebase.firestore();
+            console.log('✅ Firestore 연결 성공');
+        } catch (firestoreError) {
+            console.warn('⚠️ Firestore 연결 실패, 계속 진행:', firestoreError.message);
+        }
         
+        console.log('✅ Firebase 초기화 완료');
+        console.log('✅ 프로젝트 ID:', app.options.projectId);
+        
+        isFirebaseReady = true;
         return true;
+        
     } catch (error) {
         console.error('❌ Firebase 초기화 실패:', error);
         return false;
@@ -49,17 +62,18 @@ const isRegisterPage = window.location.pathname.includes('register.html');
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📄 페이지 로드 완료');
     
-    // Firebase 초기화
+    // Firebase 초기화 시도
     if (!initializeFirebase()) {
-        showMessage('Firebase 초기화에 실패했습니다. 페이지를 새로고침해주세요.');
+        showMessage('Firebase 연결에 실패했습니다. 페이지를 새로고침해주세요.');
         return;
     }
     
     // 인증 상태 변화 감지
     auth.onAuthStateChanged((user) => {
-        console.log('👤 인증 상태:', user ? `로그인: ${user.email}` : '로그아웃');
+        console.log('👤 인증 상태 변화:', user ? `로그인: ${user.email}` : '로그아웃');
         
         if (user && (isLoginPage || isRegisterPage)) {
+            console.log('이미 로그인된 사용자 감지, 메인으로 리다이렉트');
             showMessage('이미 로그인되어 있습니다. 메인 페이지로 이동합니다.');
             setTimeout(() => {
                 window.location.href = 'index.html';
@@ -84,6 +98,9 @@ function initLoginForm() {
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', handleLogin);
+        console.log('로그인 폼 이벤트 리스너 등록됨');
+    } else {
+        console.error('로그인 폼을 찾을 수 없습니다');
     }
 }
 
@@ -104,10 +121,18 @@ function initRegisterForm() {
 // 로그인 처리
 async function handleLogin(e) {
     e.preventDefault();
+    console.log('🔑 로그인 시도 시작');
+    
+    if (!isFirebaseReady || !auth) {
+        showMessage('Firebase가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.');
+        return;
+    }
     
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     const rememberMe = document.getElementById('rememberMe').checked;
+    
+    console.log('입력값 확인:', { email: email, passwordLength: password.length });
     
     if (!email || !password) {
         showMessage('이메일과 비밀번호를 모두 입력해주세요.');
@@ -117,6 +142,7 @@ async function handleLogin(e) {
     showLoading(true, '로그인 중입니다...');
     
     try {
+        console.log('Firebase 로그인 시도:', email);
         const userCredential = await auth.signInWithEmailAndPassword(email, password);
         const user = userCredential.user;
         
@@ -136,6 +162,8 @@ async function handleLogin(e) {
         
     } catch (error) {
         console.error('❌ 로그인 오류:', error);
+        console.error('오류 코드:', error.code);
+        console.error('오류 메시지:', error.message);
         
         let errorMessage = '로그인에 실패했습니다.';
         
@@ -153,10 +181,14 @@ async function handleLogin(e) {
                 errorMessage = '너무 많은 로그인 시도입니다. 잠시 후 다시 시도해주세요.';
                 break;
             case 'auth/invalid-credential':
+            case 'auth/invalid-login-credentials':
                 errorMessage = '이메일 또는 비밀번호가 잘못되었습니다.';
                 break;
+            case 'auth/internal-error':
+                errorMessage = '서버 내부 오류입니다. 잠시 후 다시 시도해주세요.';
+                break;
             default:
-                errorMessage = `오류: ${error.message}`;
+                errorMessage = `로그인 오류: ${error.message}`;
         }
         
         showMessage(errorMessage);
@@ -167,6 +199,11 @@ async function handleLogin(e) {
 // 회원가입 처리
 async function handleRegister(e) {
     e.preventDefault();
+    
+    if (!isFirebaseReady || !auth) {
+        showMessage('Firebase가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.');
+        return;
+    }
     
     const name = document.getElementById('name').value.trim();
     const phone = document.getElementById('phone').value.trim();
@@ -219,22 +256,29 @@ async function handleRegister(e) {
             displayName: name
         });
         
-        // 사용자 정보를 데이터베이스에 저장
-        const userData = {
-            uid: user.uid,
-            name: name,
-            phone: phone,
-            email: email,
-            status: 'active',
-            role: 'user',
-            autoLogin: autoLogin,
-            questionCount: 0,
-            answerCount: 0,
-            createdAt: Date.now(),
-            lastLoginAt: Date.now()
-        };
-        
-        await db.collection('users').doc(user.uid).set(userData);
+        // Firestore에 사용자 정보 저장 (선택적)
+        if (db) {
+            try {
+                const userData = {
+                    uid: user.uid,
+                    name: name,
+                    phone: phone,
+                    email: email,
+                    status: 'active',
+                    role: 'user',
+                    autoLogin: autoLogin,
+                    questionCount: 0,
+                    answerCount: 0,
+                    createdAt: Date.now(),
+                    lastLoginAt: Date.now()
+                };
+                
+                await db.collection('users').doc(user.uid).set(userData);
+                console.log('✅ 사용자 데이터 Firestore에 저장됨');
+            } catch (dbError) {
+                console.warn('⚠️ Firestore 저장 실패, 계속 진행:', dbError.message);
+            }
+        }
         
         console.log('✅ 회원가입 성공:', user.email);
         
@@ -260,7 +304,7 @@ async function handleRegister(e) {
                 errorMessage = '비밀번호가 너무 약합니다. 더 강한 비밀번호를 사용해주세요.';
                 break;
             default:
-                errorMessage = `오류: ${error.message}`;
+                errorMessage = `회원가입 오류: ${error.message}`;
         }
         
         showMessage(errorMessage);
@@ -273,12 +317,14 @@ function togglePassword(inputId) {
     const input = document.getElementById(inputId);
     const icon = document.getElementById(inputId + '-eye');
     
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.className = 'far fa-eye-slash';
-    } else {
-        input.type = 'password';
-        icon.className = 'far fa-eye';
+    if (input && icon) {
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'far fa-eye-slash';
+        } else {
+            input.type = 'password';
+            icon.className = 'far fa-eye';
+        }
     }
 }
 
@@ -307,31 +353,42 @@ function isValidPhone(phone) {
 
 // 약관 모달 표시
 function showTermsModal() {
-    document.getElementById('termsModal').style.display = 'flex';
+    const modal = document.getElementById('termsModal');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
 }
 
 // 약관 모달 닫기
 function closeTermsModal() {
-    document.getElementById('termsModal').style.display = 'none';
+    const modal = document.getElementById('termsModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
 // 약관 동의
 function agreeTerms() {
-    document.getElementById('agreeTerms').checked = true;
+    const checkbox = document.getElementById('agreeTerms');
+    if (checkbox) {
+        checkbox.checked = true;
+    }
     closeTermsModal();
 }
 
 // 로딩 표시/숨김
 function showLoading(show, message = '처리 중입니다...') {
     const loading = document.getElementById('loading');
-    if (show) {
-        loading.style.display = 'flex';
-        const loadingText = loading.querySelector('p');
-        if (loadingText) {
-            loadingText.textContent = message;
+    if (loading) {
+        if (show) {
+            loading.style.display = 'flex';
+            const loadingText = loading.querySelector('p');
+            if (loadingText) {
+                loadingText.textContent = message;
+            }
+        } else {
+            loading.style.display = 'none';
         }
-    } else {
-        loading.style.display = 'none';
     }
 }
 
@@ -339,13 +396,21 @@ function showLoading(show, message = '처리 중입니다...') {
 function showMessage(message) {
     const modal = document.getElementById('messageModal');
     const text = document.getElementById('messageText');
-    text.textContent = message;
-    modal.style.display = 'flex';
+    if (modal && text) {
+        text.textContent = message;
+        modal.style.display = 'flex';
+    } else {
+        // 폴백: alert 사용
+        alert(message);
+    }
 }
 
 // 메시지 닫기
 function closeMessage() {
-    document.getElementById('messageModal').style.display = 'none';
+    const modal = document.getElementById('messageModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
 // 현재 사용자 정보 가져오기
