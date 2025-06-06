@@ -15,11 +15,11 @@ import {
     getDoc 
 } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
 
-// Firebase 설정을 별도 파일에서 import
-import { firebaseConfig } from './firebase-config.js';
+// Firebase 설정을 전역 변수에서 가져오기
+// firebase-config.js 파일이 먼저 로드되어야 함
 
 // Firebase 초기화
-const app = initializeApp(firebaseConfig);
+const app = initializeApp(window.firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
